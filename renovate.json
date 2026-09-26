@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "The portfolio's configuration, extended by name rather than copied — see `github>youndie/sborka`, whose own description makes the argument: ten repositories had written the same file, and the five that had not are where the defects were. This replaces Renovate's onboarding `config:recommended`, which is a reasonable default for a repository with no portfolio behind it and not for one whose whole point is taking the portfolio's conventions.",
+    "AUTOMERGE IS DELIBERATELY ABSENT, AND ITS PRECONDITION WAS CHECKED RATHER THAN ASSUMED. `github>youndie/sborka:automerge-harness` is only safe where a pull request actually runs the build. Here `.github/workflows/check.yaml` runs `make check` on `pull_request` — the documentation gate, python and seconds — and no Gradle build at all, so a harness bump that broke compilation would be merged by a green run that never compiled anything. B-06 adds that job; the preset can be extended second, after it, and second is not cosmetic — package rules concatenate in the order the presets are named, and the harness rule has to land after the base preset's `a major of anything that ships gets a human`.",
+    "Nothing repository-specific is added, and that is the preset's own rule rather than laziness: what keel needs beyond it will be found by the preset failing to cover something. The two candidates one would guess are already covered — `kotlin` and `kotlinx` each move as one release train and the base preset groups both."
+  ],
+  "extends": [
+    "github>youndie/sborka"
+  ]
+}

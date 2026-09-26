@@ -1,0 +1,95 @@
+# One line per version, and a comment above a line says what makes it non-obvious.
+#
+# Every version here was read from its own registry listing on 2026-09-16 — Maven Central for
+# sqlx4k, the portfolio's reposilite for the rest — rather than recalled.
+
+[versions]
+
+# The shared build conventions. One number: every sborka plugin below takes its version from here.
+sborka = "0.4.0.89"
+
+# NOT HERE ANY MORE. The compiler comes from `wip`, the catalog a sborka release publishes.
+#
+# This line's reason was never this repository's: it pinned 2.4.10 because kore's verification
+# addresses were dumps of that distribution. kore re-ran those dumps against 2.4.20 and every
+# address held (youndie/kore#88), so the reason is discharged rather than ignored — and with it the
+# two that came along: the portfolio's toolkits are on 2.4.20 now, and that distribution is already
+# on both machines.
+
+# The exact artefact kore's five platform divergences were read in: EmbeddedServerJvm.kt,
+# EmbeddedServer.posix.kt (was EmbeddedServerNix.kt before 3.6.0 renamed the posix sources),
+# CIOApplicationEngine.kt, ServerPipeline.kt. A bump is a re-read of those four
+# places before anything else. CIO because it is the only engine on Kotlin/Native — Netty and Jetty
+# are Java libraries.
+ktor = "3.6.0"
+
+coroutines = "1.11.0"
+serialization = "1.11.0"
+
+# The process lifecycle: the ordered shutdown, the three probes, the typed configuration, /version.
+# On the portfolio's repository and NOT on Maven Central, which is what the README's reposilite block
+# is for and what the "stranger test" waits on.
+kore = "0.1.4"
+
+# The size gate `sborka.binaryBudget` is enforced by. Applied by `:server` rather than carried by the
+# convention — sborka's own comment says why.
+razves = "0.1.0.31"
+
+# The database. Two drivers behind one API — the Rust one on Kotlin/Native and `org.xerial:sqlite-jdbc`
+# on the JVM — which is why keel has ONE store implementation and not the two the brief priced in
+# (research §1.6, D1). Pinned: it carries a Rust runtime, and a service that changes its driver
+# silently is a service answering a different question every few months.
+sqlx4k = "1.13.1"
+
+# Test-only, and it is the file handling rather than a convenience: the store suite opens a real
+# database file and has to delete a stale one first, on both targets from one source.
+okio = "3.18.2"
+
+# The Leyden AOT cache for the JVM distribution. JDK 25 or newer is a hard requirement — the one-step
+# training workflow is JEP 514 — which agrees with the toolchain kore already forces.
+zavarnik = "0.1.0.41"
+
+[libraries]
+kore-core = { module = "io.github.youndie:kore-core", version.ref = "kore" }
+kore-ktor = { module = "io.github.youndie:kore-ktor", version.ref = "kore" }
+
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+
+# Test-only. It publishes linuxx64 and linuxarm64 — checked in Central before depending on it from a
+# common test source set, which is the check a `-jvm`-suffixed coordinate in a KMP module means
+# somebody skipped.
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
+
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+
+# THE DRIVER, not the database-agnostic half. keel opens the connection, so it needs the SQLite part;
+# a library that is handed a driver takes `io.github.smyrgeorge:sqlx4k` instead.
+#
+# EXACTLY ONE sqlx4k DRIVER, EVER. Two in one Kotlin/Native binary do not link — they define the same
+# Rust symbols (`duplicate symbol: std::panicking::EMPTY_PANIC`) — and it is a link failure, not a
+# resolution one, so nothing warns. A clone that wants Postgres REPLACES this line.
+sqlx4k-sqlite = { module = "io.github.smyrgeorge:sqlx4k-sqlite", version.ref = "sqlx4k" }
+
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+
+[plugins]
+
+sborkaKmp = { id = "io.github.youndie.sborka.kmp", version.ref = "sborka" }
+sborkaLint = { id = "io.github.youndie.sborka.lint", version.ref = "sborka" }
+sborkaNativeService = { id = "io.github.youndie.sborka.native-service", version.ref = "sborka" }
+
+# Generates the `KoreBuildIdentity` object `/version` serves, as a Kotlin source that is an INPUT of
+# the compilation rather than something the build wrote first. Kotlin/Native has no manifest and no
+# JVM-style resource loading, so a resource-based identity compiles there and returns nothing.
+koreBuild = { id = "io.github.youndie.kore.build", version.ref = "kore" }
+
+# The JVM half's module shape — `application`, the distribution's name and zavarnik's readiness
+# default — as a convention rather than as twelve lines every native service writes again. B-17.
+sborkaJvmDistribution = { id = "io.github.youndie.sborka.jvm-distribution", version.ref = "sborka" }
+
+razves = { id = "io.github.youndie.razves", version.ref = "razves" }
+zavarnik = { id = "io.github.youndie.zavarnik", version.ref = "zavarnik" }

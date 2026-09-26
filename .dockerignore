@@ -1,0 +1,19 @@
+# The build context, trimmed. `COPY . .` in the first stage takes whatever is here, and the Gradle
+# and Kotlin output directories are tens of megabytes of things the image build is about to produce
+# for itself.
+
+build
+*/build
+.gradle
+.kotlin
+.idea
+.DS_Store
+
+# `.git` IS DELIBERATELY NOT LISTED, and that is the one line of this file worth reading.
+#
+# `installKoreVersion` serves a build identity the Gradle plugin compiles in, and the plugin reads it
+# from git. Without `.git` in the context the image answers `/version` with `0.1.0+unknown` — which is
+# exactly the question `/version` exists to answer, unanswered, in the artefact where it matters most.
+#
+# It costs the repository's history in the build context. If that ever matters, the fix is
+# `--build-arg` carrying the commit, not excluding the directory and losing the answer.

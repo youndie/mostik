@@ -1,0 +1,215 @@
+# keel's gate. `docs/` lives inside this repository, so `make check` needs no arguments.
+#
+# From docs-bootstrap's reference workflow, with two deliberate changes: the draft gate is commented
+# out with B-10 as its address, and the build job is named as arriving with B-01 rather than being
+# silently absent.
+
+name: check
+
+# **No path filters.** A filter saves seconds and buys red default branches. Two changes that are
+# each harmless alone disagree once merged; a generated index diverges from its sources when
+# something outside the listed paths moves; and a document at the root of the tree is exactly the
+# one nobody remembers to add to the list, so the check that would have caught it never runs.
+# Sixty documents are checked in seconds. There is nothing here worth economising on.
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"          # Monday morning, for the anchors job below
+  workflow_dispatch:
+
+jobs:
+  # The gate. Exactly the target a contributor runs: a local check set that differs from the CI one
+  # turns "green here, red there" into the normal state of affairs, and then neither is read.
+  check:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install pyyaml
+
+      # BEFORE `make check`, and that order is the whole value of this step. Both checks catch a
+      # number taken twice, but this one says *which branch took it and under what name*, while the
+      # gate says `duplicate ids: B-06`. A failing step stops the job, so whichever runs first is
+      # the message the author gets.
+      #
+      # Pull requests only, and only when the backlog is a file per item. Read the note below
+      # before deciding whether you need it at all.
+      #
+      # The refspec is explicit on purpose: `git fetch origin main` moves FETCH_HEAD and creates no
+      # remote-tracking ref, so the next line would fail with "could not read origin/main". The
+      # check reads a tree rather than a history, so the shallow clone checkout makes is enough and
+      # `fetch-depth: 0` is not needed.
+      - if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin \
+            "+refs/heads/$GITHUB_BASE_REF:refs/remotes/origin/$GITHUB_BASE_REF"
+          python3 scripts/backlog_index.py --against "origin/$GITHUB_BASE_REF"
+
+      # WHEN THE STEP ABOVE IS WORTH HAVING. It pays for itself only if the generated index is not
+      # committed from the branch — for instance when the default branch rebuilds and commits it
+      # itself. If every branch commits the regenerated `backlog.md`, then two branches that each
+      # add an item always conflict in that one file, and two things follow, both observed:
+      #
+      #   * a pull request that cannot be merged gets no `pull_request` run at all, so this step
+      #     does not run precisely when the branches have diverged most;
+      #   * once the conflict is resolved, the ordinary duplicate-id check inside `make check`
+      #     catches the collision anyway.
+      #
+      # So with a branch-committed index the conflict is the real guard and this step is a
+      # backstop. Keep it — it is cheap and it explains itself better — but do not rely on it as
+      # the only thing standing between two branches and one number.
+
+      - run: make check
+
+      # THE DRAFT GATE, ON SINCE B-10.
+      #
+      # Default branch only: `status: draft` is legal in a pull request, where it means "this branch
+      # will make it true", and a defect the moment it merges. It was off while the tree was
+      # documentation-first and every layer document described code nobody had written; it is on now
+      # because each of them has been re-read against the code rather than flipped, and B-10 records
+      # the four sentences that re-reading corrected.
+      - if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: python3 scripts/docs_check.py --on-main
+
+  # THE CODE GATE. Until B-06 there was none, and a pull request that did not compile was green —
+  # which stopped being only a reviewer's problem when the loop began merging on green CI.
+  build:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # BY NAME RATHER THAN BY COPY. Java, Gradle and the `~/.konan` cache in one step and at one
+      # version; the portfolio ran three different versions of `setup-gradle` at once before this
+      # action existed. The cache matters here specifically: the Kotlin/Native toolchain is around a
+      # gigabyte and is fetched on every cold runner.
+      - uses: youndie/sborka/.github/actions/setup-kotlin@main
+        with:
+          konan-cache: "true"
+
+      # `make build`, not `./gradlew` directly, so the command a contributor runs and the command
+      # that gates a pull request are one string in one place — the same reason the job above runs
+      # `make check` rather than listing the scripts.
+      - run: make build GRADLEFLAGS=--no-daemon
+
+      # THE EXIT CODE IS NOT THE EVIDENCE. A suite that ran zero tests exits zero, and on a
+      # multiplatform build the suite that silently does not run is the interesting one: `build` was
+      # green for two items here while running no tests at all.
+      #
+      # So the targets are named rather than counted. `find | wc -l` passes when `linuxX64Test`
+      # quietly stops being wired and the JVM suite carries the run on its own, which is the exact
+      # shape of "a check that passes on one target and is skipped on the other" — the brief's red
+      # list. Naming them means the failure says which one went missing.
+      - name: report which suites actually ran
+        if: always()
+        run: |
+          set -u
+          fail=0
+          for target in jvmTest linuxX64Test; do
+            files=$(find server/build/test-results/"$target" -name '*.xml' 2>/dev/null | sort)
+            if [ -z "$files" ]; then
+              echo "::error::no test results for $target - that suite did not run"
+              fail=1
+              continue
+            fi
+            total=0
+            for f in $files; do
+              printf '%s ' "$f"
+              grep -o 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' "$f" || echo
+              n=$(sed -n 's/.*<testsuite[^>]*tests="\([0-9]*\)".*/\1/p' "$f" | head -1)
+              total=$((total + ${n:-0}))
+            done
+            echo "$target: $total tests"
+            [ "$total" -gt 0 ] || { echo "::error::$target produced result files but ran zero tests"; fail=1; }
+          done
+          [ "$fail" = 0 ] || exit 1
+
+      # THE arm64 TEST BINARY, CROSS-LINKED HERE AND RUN SOMEWHERE ELSE.
+      #
+      # Kotlin/Native has no `linux_arm64` host, so `linuxArm64Test` is never CREATED — it does not
+      # appear as skipped, it does not appear at all, and no runner can be told to run it. Linking and
+      # running are separable even where the plugin will not do it for you.
+      #
+      # `linkDebugTestLinuxArm64` and not `build`: with two native targets `stageNativeImage` stages
+      # both release binaries under one name and Gradle refuses (youndie/sborka#80). This path does not
+      # go through it.
+      - run: ./gradlew linkDebugTestLinuxArm64 -Pkeel.linuxArm64=true --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linuxarm64-test-binary
+          path: server/build/bin/linuxArm64/debugTest/test.kexe
+          if-no-files-found: error
+
+  # THE SUITE THAT HOST CANNOT RUN. Takes the binary the x86-64 job cross-linked and executes it on a
+  # machine of that architecture.
+  linux-arm64-suite:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linuxarm64-test-binary
+
+      - name: run the linuxArm64 suite
+        run: |
+          set -u
+          [ -f test.kexe ] || { echo "::error::no linuxArm64 test binary was produced"; exit 1; }
+          chmod +x test.kexe
+          # THE EXIT CODE IS THE VERDICT and the count under it is a floor. A suite that ran zero
+          # tests exits zero, which is the failure this repository keeps meeting; reading a *pass*
+          # out of the text would be the other one, so it is not done here.
+          out=$(./test.kexe 2>&1) || fail=1
+          echo "$out"
+          n=$(echo "$out" | sed -n 's/.*Running \([0-9][0-9]*\) test.*/\1/p' | head -1)
+          echo "$((${n:-0})) tests on $(uname -m)"
+          [ "${fail:-0}" = 0 ] || { echo "::error::the linuxArm64 suite failed"; exit 1; }
+          [ "${n:-0}" -gt 0 ] || { echo "::error::the linuxArm64 binary ran zero tests"; exit 1; }
+
+  # Separate from the gate, and on a schedule rather than on a pull request, because an anchor rots
+  # when somebody refactors a **different** repository. A pull request here is the least likely
+  # moment for one to break, and running it there trains people to ignore a red build they did not
+  # cause. It also does not block: a path quoted *as obsolete* is indistinguishable from a live one
+  # by machine, so the report is read by a person. Add `--check` once the stale list reaches zero.
+  anchors:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install pyyaml
+
+      # The code lives in this checkout, so its parent is a directory whose one subdirectory is
+      # this repository — which is exactly what --repos expects.
+      - run: python3 scripts/code_anchors.py --repos ..
+
+      # For a separate documentation repository, replace the step above with shallow clones of the
+      # services. History is not needed — only the file tree — and a repository that cannot be
+      # cloned is a warning rather than a failure, because its anchors are simply unchecked.
+      #
+      # `secrets.GITHUB_TOKEN` is scoped to the repository running the workflow. That is enough for
+      # public services, which is how the block below was tested; a private one needs a token that
+      # can read it, and with the default one it will take the warning branch every week without
+      # ever saying why.
+      #
+      #   - run: |
+      #       mkdir -p repos && cd repos
+      #       for r in service-one service-two; do
+      #         git clone --depth 1 --filter=blob:none --no-checkout \
+      #           "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository_owner }}/$r.git" \
+      #           || echo "::warning::$r is unreachable - its anchors were not checked"
+      #       done
+      #     env:
+      #       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   - run: python3 scripts/code_anchors.py --repos repos
