@@ -26,7 +26,8 @@ Feature: publish over HTTP.
   that was false.
 - AC: `grep -ri keel` over `server/`, `distribution/`, `Dockerfile` and the Gradle files finds only
   deliberate mentions of the template's origin.
-- AC: `--print-config` lists `KAFKA_BOOTSTRAP_SERVERS`, `TOPICS`, `PUBLISH_DEADLINE_MS` and
-  `MAX_RECORD_BYTES`.
+- AC: `--print-config` lists `MOSTIK_BOOTSTRAP_SERVERS`, `MOSTIK_TOPICS`, `MOSTIK_PUBLISH_DEADLINE_MS` and
+  `MOSTIK_MAX_RECORD_BYTES`. A `KAFKA_*` variable reaches the producer as its dotted key, and a
+  misspelt one stops the start-up (research §1.10).
 - Anchors: `settings.gradle.kts`, `gradle/libs.versions.toml`, `server/build.gradle.kts`,
   `server/src/commonMain/kotlin/io/github/youndie/keel/Wiring.kt`, `Dockerfile`.

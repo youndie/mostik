@@ -172,6 +172,22 @@ republished snapshot, not for a merged pull request.
 also does authentication (D4). mostik trusts its network and limits what it can write to with a topic
 allowlist.
 
+### 1.10 kore's configuration is closed under its prefix
+
+| Fact | Where verified |
+|---|---|
+| A key is read as `<prefix>_<name>`, so the template's `PORT` is `KEEL_PORT` and mostik's is `MOSTIK_PORT` | `youndie/kore@47825a6!/kore-core/src/commonMain/kotlin/io/github/youndie/kore/config/ConfigSchema.kt` (`variableOf`) |
+| A variable under the prefix that the schema does not declare is refused at start-up, with the declared name it is probably a misspelling of | same file; `server/src/commonMain/kotlin/io/github/youndie/keel/KeelConfig.kt` (KDoc) |
+| kafkakn refuses a producer key neither arm honours at construction, and does not drop it silently | `youndie/kafkakn@2f209b0!/docs/api/producer-contract.md`, *Configuration* |
+
+**Consequence.** The brief's pass-through of arbitrary producer keys cannot live under `MOSTIK_`. Those
+keys are read from a second prefix, `KAFKA_`, outside the schema: `KAFKA_ACKS` becomes `acks`, and
+`KAFKA_SSL_CA_LOCATION` becomes `ssl.ca.location`. A misspelling is still refused at start-up, by kafkakn
+rather than by kore. mostik's own keys stay in the schema: `MOSTIK_BOOTSTRAP_SERVERS`, `MOSTIK_TOPICS`,
+`MOSTIK_PUBLISH_DEADLINE_MS`, `MOSTIK_MAX_RECORD_BYTES`. The mapping from underscores to dots is a
+decision, and a key whose Kafka name holds an underscore cannot be expressed this way. No such key is
+in the contract's portable set.
+
 ---
 
 ## 2. Decisions
