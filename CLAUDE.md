@@ -8,7 +8,7 @@ Kotlin/Native binary and a JVM distribution, one image) and publishing through
 
 **State (2026-09-26): nothing of mostik is built.** The code is keel's template at
 `youndie/keel@6be238d`, unchanged; B-01 turns it into mostik. The repository exists only on this Mac —
-it is not on GitHub and not a mutagen session yet (see *Where things build*). This sentence is dated so
+it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 
 ## How to start a session
@@ -126,10 +126,9 @@ repositories open. The full list with addresses is keel's, at
 
 ## Where things build
 
-**Not yet synced.** Until a mutagen session `mostik` exists (one-way replica, alpha here, beta on the
-Linux box, like every other repository here), `wsl-run` has nowhere to run and Gradle has nowhere to
-build — a Mac cannot link the ELF. Creating that session is the owner's step, before B-01. Once it
-exists, **Gradle runs there**, through the wrapper:
+This repository is a mutagen session (one-way replica, alpha here, beta `mostik` on the Linux box,
+created 2026-09-26 with keel's ignores: `build`, `.gradle`, `.kotlin`, `.idea`, `.DS_Store`, VCS).
+**Gradle runs there**, through the wrapper:
 
 ```bash
 ~/.claude/bin/wsl-run ./gradlew build
