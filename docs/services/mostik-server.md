@@ -2,7 +2,7 @@
 id: mostik-server
 title: mostik server — the bridge, built twice
 type: service
-status: draft
+status: active
 module: server, distribution
 tech_stack: [Kotlin Multiplatform, Kotlin/Native linuxX64, JVM, Ktor CIO, kore, kafkakn]
 owner: unassigned
@@ -12,8 +12,8 @@ publishes: [container image with the native binary and the JVM distribution]
 
 # mostik server
 
-> **Draft.** Everything below is *target* until B-01 and B-03 give it code. The paths are where the
-> code will live after B-01 renames the template's package from `keel` to `mostik`.
+> Read against the code on 2026-09-27 (B-03). What is not built yet is marked *target* with the item that
+> builds it; the deadline (B-05) is the largest of those.
 
 ## 1. Responsibility
 
@@ -43,7 +43,8 @@ read from Kafka.
 
 ## 3. How it is built
 
-**The deadline is split into kafkakn's two steps** (research §1.4, correction):
+**Today the route calls `send`, unbounded, and any failure it throws is `504`.** *Target, B-05:* the
+deadline is split into kafkakn's two steps (research §1.4, correction):
 
 1. `enqueue(record)` runs with **no** coroutine timeout, bounded by `max.block.ms`, which mostik sets from
    `MOSTIK_QUEUE_WAIT_MS`. `RecordNotQueuedException` becomes `429`.
@@ -59,7 +60,10 @@ inside the route. Escaping to Ktor, it would be a `500`, the one status research
 
 **The shutdown order is keel's, with the producer in the SQLite pool's slot** (research §1.6): not ready,
 then refusal, then the engine drain, then `producer.close()` as a `ShutdownParticipant`. The drain has to
-outlast the deadline, and the start-up refuses a configuration where it does not (B-07).
+outlast the deadline, and the start-up will refuse a configuration where it does not (*target*, B-07).
+
+**The route takes `send` as a function**, not the producer, so its own decisions are tested without a broker
+(`PublishRoutesTest`). What the broker did is only ever read out of the topic (`ci/b-03/run.sh`).
 
 **Two builds, one source.** The native binary links librdkafka from inside the kafkakn klib; the JVM
 distribution runs the official Java client. Neither build carries code of its own for publishing.
@@ -98,9 +102,9 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 | `MOSTIK_PORT` | listening port; default `8080` | no |
 | `MOSTIK_BOOTSTRAP_SERVERS` | Kafka's `bootstrap.servers` | yes |
 | `MOSTIK_TOPICS` | the allowlist, comma-separated; any other topic is `404` | yes |
-| `MOSTIK_PUBLISH_DEADLINE_MS` | the bound on one publish; default `5000` (*target*) | no |
-| `MOSTIK_QUEUE_WAIT_MS` | becomes the producer's `max.block.ms`, which bounds `enqueue`; must be shorter than the deadline; default `1000` (*target*) | no |
-| `MOSTIK_MAX_RECORD_BYTES` | a larger body is `413` before `send` | no |
+| `MOSTIK_PUBLISH_DEADLINE_MS` | the bound on one publish; default `5000`. Read and checked for being positive; *enforced from B-05* | no |
+| `MOSTIK_QUEUE_WAIT_MS` | becomes the producer's `max.block.ms`, which bounds `enqueue`; must be shorter than the deadline; default `1000`. *Target, B-05: not declared yet, so setting it stops the start-up as an unknown variable* | no |
+| `MOSTIK_MAX_RECORD_BYTES` | a larger body is `413` before `send`; default `1048576` | no |
 | `MOSTIK_TRACY_ENDPOINT`, `MOSTIK_TRACY_KEY` | observability, both or neither, as in keel | no |
 | `KAFKA_*` | producer keys, outside the schema: `KAFKA_ACKS` → `acks`. kafkakn refuses a key neither arm honours | no |
 
@@ -109,11 +113,15 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 - **The `503` during shutdown is not mostik's.** kore's refusal answers `503` with the text
   `shutting down\n` and `Connection: close`, before any mostik code runs. It is the one error without
   mostik's JSON body (research §1.6, consequence 3).
-- **`429` depends on a kafkakn API that is only a day old.** `enqueue` and `RecordNotQueuedException` were
-  published in the snapshot of 2026-09-26 (B-04). A build that resolved an older cached snapshot does not
-  have them, and fails to compile rather than answering wrongly.
-- **`max.block.ms` is mostik's, not the operator's.** A `KAFKA_MAX_BLOCK_MS` stops the start-up, because
-  the queue wait has one source, `MOSTIK_QUEUE_WAIT_MS`.
+- **`429` waits for a kafkakn version with B-76** (B-04). Until native `enqueue` refuses a record whose topic
+  has no metadata, the two builds would answer that case differently.
+- *Target, B-05:* **`max.block.ms` is mostik's, not the operator's.** A `KAFKA_MAX_BLOCK_MS` will stop the
+  start-up, because the queue wait has one source, `MOSTIK_QUEUE_WAIT_MS`. Today `KAFKA_MAX_BLOCK_MS` passes
+  through like any other key.
+- **Record headers arrive grouped by name**, not in the order they were sent (endpoint-records, measured).
+- **The AOT cache is trained on `/version` only.** Training runs with no broker, so a publish in its workload
+  would wait out `max.block.ms` and teach the cache the refusal path. The publishing path is therefore not in
+  the cache.
 - **A `504` record may still be in the producer when the process exits.** `close` flushes it, so it can
   be written after the client was told "unknown". That is consistent with "unknown". How long `close`
   takes with the broker gone is B-08.

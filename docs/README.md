@@ -29,11 +29,11 @@ file each in [`backlog/`](backlog/), cited as [B-01](backlog/B-01-from-template-
 
 ## Read this first
 
-**On this branch the feature, API and service documents are `draft`, and that is what keeps them off
-`main`.** The code on `main` is the skeleton B-01 made from keel's template (`youndie/keel@6be238d`): the
-kore wiring and a producer, and no route. These documents describe that route before it exists. The
-branch merges when B-03 gives them code anchors, each document is re-read against the code before it goes
-`active`, and `docs_check.py --on-main` refuses a `draft` on the default branch.
+**Every document here is `active`, and each was re-read against the code in B-03, not flipped.**
+`active` does not mean everything described is built. It means nothing described is wrong: what is not
+built yet is marked *target* where a reader meets it, with the item that builds it. The deadline (B-05) and
+the shutdown checks (B-07, B-08, B-09) are the largest of those. `docs_check.py --on-main` refuses a `draft`
+on the default branch.
 
 **What is verified** is [research-architecture](research/research-architecture.md) §1: each fact
 carries an address inside kafkakn, keel, kore or a registry listing, with the date it was read. The
@@ -74,14 +74,14 @@ by a person; the machine only guards the membership.
 
 ### Services (1)
 
-- [ ] [mostik-server](services/mostik-server.md) — the bridge in two builds: where the deadline lives, the shutdown order with the producer last, the `MOSTIK_` and `KAFKA_` configuration, and three quirks
+- [x] [mostik-server](services/mostik-server.md) — the bridge in two builds: where the deadline lives, the shutdown order with the producer last, the `MOSTIK_` and `KAFKA_` configuration, and three quirks
 
 ### Features (2)
 
-- [ ] [feature-publish-over-http](features/feature-publish-over-http.md) — one `POST`, one record, a status that is true about the record; six target scenarios decided by reading the topic
-- [ ] [feature-shutdown-without-loss](features/feature-shutdown-without-loss.md) — `SIGTERM` without making any answer false, and why the drain must outlast the deadline
+- [x] [feature-publish-over-http](features/feature-publish-over-http.md) — one `POST`, one record, a status that is true about the record; six target scenarios decided by reading the topic
+- [x] [feature-shutdown-without-loss](features/feature-shutdown-without-loss.md) — `SIGTERM` without making any answer false, and why the drain must outlast the deadline
 
 ### API (2)
 
-- [ ] [endpoint-records](api/endpoint-records.md) — `POST /topics/{topic}/records`: how the request becomes a record, the closed status set, and kore's `503`
-- [ ] [endpoint-probes](api/endpoint-probes.md) — kore's probes and `/version` as keel mounts them; readiness does not follow the broker
+- [x] [endpoint-records](api/endpoint-records.md) — `POST /topics/{topic}/records`: how the request becomes a record, the closed status set, and kore's `503`
+- [x] [endpoint-probes](api/endpoint-probes.md) — kore's probes and `/version` as keel mounts them; readiness does not follow the broker

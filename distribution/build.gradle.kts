@@ -41,8 +41,9 @@ zavarnik {
         // to start without somewhere to publish and something it may publish to. Constructing the
         // producer contacts no broker that training needs to exist.
         //
-        // THE WORKLOAD IS `/version` UNTIL THERE IS A ROUTE (B-03). A cache trained on kore's routes alone
-        // has seen none of the publishing path, so B-03 moves the workload onto it.
+        // THE WORKLOAD IS `/version`, AND THE PUBLISHING PATH IS NOT IN THE CACHE. Training runs with no
+        // broker, so a publish here would wait out `max.block.ms` and train the refusal path instead. A
+        // workload that publishes needs a broker beside the build, which nothing provides yet.
         environment("MOSTIK_BOOTSTRAP_SERVERS", "127.0.0.1:9092")
         environment("MOSTIK_TOPICS", "orders")
         workload { get("http://127.0.0.1:8080/version") }

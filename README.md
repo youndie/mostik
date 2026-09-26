@@ -15,8 +15,8 @@ waits for the acknowledgement under a deadline, and says `504` when it does not 
 
 *mostik* is Russian for "a small bridge".
 
-> **Status: the skeleton is built, and there is no route yet.** The code is [keel](https://github.com/youndie/keel)'s
-> template renamed, with its database removed and a Kafka producer wired in. The plan, and the reason the statuses are shaped this way, is in
+> **Status: `200`, `404` and `413` work, checked on both builds by reading the topic; the deadline behind
+> `429` and `504` is not built yet.** The plan, and the reason the statuses are shaped this way, is in
 > [docs/research](docs/research/research-architecture.md). The order of work is in
 > [backlog.md](backlog.md).
 

@@ -2,7 +2,7 @@
 id: feature-shutdown-without-loss
 title: Stop without making any answer false
 type: feature
-status: draft
+status: active
 owner: unassigned
 involved_services:
   - mostik-server
@@ -27,31 +27,38 @@ is new here is that the drain has to outlast the publish deadline.
 
 ## 2. Business rules
 
-* A request that arrives after the refusal starts gets `503` and is never sent.
-* A request in flight when the signal lands gets a real answer (`200`, `429` or `504`), never a reset
-  connection.
-* `drain ≥ MOSTIK_PUBLISH_DEADLINE_MS + margin`, or the service refuses to start and names both values
-  (research D6).
-* `close` ends within the grace period, or how long it takes is measured and routed to kafkakn (B-08).
+* A request that arrives after the refusal starts gets `503` and is never sent. This is kore's
+  `installShutdownRefusal`, tested in kore; mostik's run of it under load is B-09.
+* *Target, B-09:* a request in flight when the signal lands gets a real answer (`200`, `429` or `504`),
+  never a reset connection.
+* *Target, B-07:* `drain ≥ MOSTIK_PUBLISH_DEADLINE_MS + margin`, or the service refuses to start and names
+  both values (research D6). **Not checked today.**
+* *Target, B-08:* `close` ends within the grace period, or how long it takes is measured and routed to
+  kafkakn. **Seen on native in B-04: 300 200 ms** for one record queued against an unreachable broker.
 
 ## 3. Flow
 
 1. `SIGTERM`. kore flips readiness (`/health/ready` → `503`) and waits `preDrainWait` (5 s by default).
 2. The refusal starts: every path but the probes answers kore's `503`.
-3. The engine drains for up to `drain` (15 s by default). Each request in it is bounded by the deadline.
+3. The engine drains for up to `drain` (15 s by default). Each request in it is bounded by the deadline
+   (*target*, B-05; today `send` is unbounded).
 4. `producer.close()` flushes and releases, as the `ShutdownParticipant`.
+
+Steps 1, 2 and 4 are what both builds printed on `SIGTERM` in B-01: `ANNOUNCE` 5.0 s, then `DRAIN`, then
+`RELEASE_POOLS`, where the producer is closed, with no request in flight.
 
 ## 4. Code anchors
 
 | Service | Code |
 |---|---|
 | mostik-server | `server/src/commonMain/kotlin/io/github/youndie/mostik/Wiring.kt` — the sequence, and the producer as its participant |
-| mostik-server | `server/src/commonMain/kotlin/io/github/youndie/mostik/MostikConfig.kt` — the drain-budget check (B-07) |
-| the oracle | `ci/b-09/run.sh` — the client-side ledger against the topic (B-09) |
+| mostik-server | `server/src/commonMain/kotlin/io/github/youndie/mostik/MostikConfig.kt` — where B-07's drain-budget check goes |
+
+The oracle for the scenarios below is B-09's client-side ledger read against the topic. It is not written yet.
 
 ## 5. Scenarios (BDD / test cases)
 
-All *target*.
+All *target*: B-09 runs the first two, and B-07 the third.
 
 ### Scenario: the drain covers the deadline
 * **Given:** 64 concurrent publishers, each keeping a ledger of key → status, and a broker that is up

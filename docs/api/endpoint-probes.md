@@ -2,7 +2,7 @@
 id: endpoint-probes
 title: Probes and version — kore's routes, as keel mounts them
 type: api_endpoints
-status: draft
+status: active
 services:
   - mostik-server
 contract_source:
@@ -12,9 +12,9 @@ parent_feature: feature-shutdown-without-loss
 
 # API: probes and version
 
-> **Draft**, but the routes are verified: they are kore's, and keel mounts them unchanged. What is
-> *target* is only that mostik keeps them as keel has them. Whether readiness should follow the broker is
-> research open question 1; the table says what it does by default.
+> The routes are kore's, mounted by `mostikModule` as keel mounts them; `/health/ready` and `/version` were
+> answered by both builds on 2026-09-27 (B-01). Whether readiness should follow the broker is research open
+> question 1; the table says what it does today.
 
 ## Routes — all of them, no exceptions
 

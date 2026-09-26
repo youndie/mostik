@@ -239,7 +239,10 @@ in the contract's portable set.
 ### D1. One record per request, the body is the value
 
 The request body is the record's value, byte for byte, and is never parsed. The key comes from the
-`Record-Key` header. Record headers come from `Record-Header-<name>` headers, in order. The rejected
+`Record-Key` header. Record headers come from `Record-Header-<name>` headers. *"In order", as this
+first said, is not what arrives:* sent as `Zeta:1, alpha:2, Zeta:3`, they reach the topic as
+`Zeta:1, Zeta:3, alpha:2`, grouped by name, on both builds (B-03). Ktor's request headers are a map from name
+to values, so the order between different names is not the wire's. The rejected
 alternative is a JSON envelope with a base64 value, the shape of other REST proxies. It parses what
 mostik has no reason to read, and it makes every caller encode. Batches are out of the first version.
 

@@ -6,9 +6,9 @@ may write it twice. Built from [keel](https://github.com/youndie/keel) (a server
 Kotlin/Native binary and a JVM distribution, one image) and publishing through
 [kafkakn](https://github.com/youndie/kafkakn).
 
-**State (2026-09-27): the skeleton is built, with no route yet.** B-01 renamed keel's template
-(`youndie/keel@6be238d`), removed its SQLite store, and wired a kafkakn producer: built before anything
-serves, closed after the drain. B-03 adds the route. The repository exists only on this Mac —
+**State (2026-09-27): the route publishes, with no deadline yet.** `POST /topics/{topic}/records` answers
+`200` with the offset the broker gave, checked by reading the topic on both builds (B-03). `send` is still
+unbounded; the deadline is B-05, which waits on kafkakn B-76 (B-04). The repository exists only on this Mac —
 it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 
@@ -27,10 +27,11 @@ that its age is visible; `backlog.md` and the build are what cannot go stale.
 2. [backlog.md](backlog.md) — the goal, the stages, the index. Items are one file each in
    `docs/backlog/`; the index between the markers is generated, so edit the item and run
    `python3 scripts/backlog_index.py`.
-3. The layer document the task belongs to. **On `main` there are none yet, deliberately**: the feature,
-   API and service documents are `draft` on the branch **docs/drafts** and merge when B-03 gives them the
-   route. Until then, the kore wiring the skeleton kept is described by the template's service document,
-   `youndie/keel@6be238d!/docs/services/keel-server.md` — its store sections no longer apply.
+3. The layer document the task belongs to: [docs/services/mostik-server.md](docs/services/mostik-server.md)
+   for how it is built and its quirks, [docs/api/endpoint-records.md](docs/api/endpoint-records.md) for the
+   route, [docs/features/feature-publish-over-http.md](docs/features/feature-publish-over-http.md) for the
+   scenarios that are the acceptance. What is not built yet is marked *target* in each. The map is
+   [docs/README.md](docs/README.md).
 4. The skills, when the task is building rather than documenting: `ktor-server-feature` for the route,
    `kmp-testing` for the suites, `native-service-bootstrap` for the skeleton, `backlog-item` for an
    item. The repository is read **before** the skill.
