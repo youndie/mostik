@@ -105,6 +105,13 @@ the JVM build even after B-74, and the two builds answer differently. That is op
   So `429` is reachable on **both** builds. It comes from `enqueue` throwing, not from a cut wait. The
   correction to the design is §1.4's.
 
+**Refuted in part, 2026-09-27 (B-04): the "no metadata" half does not hold on native.** With a bootstrap
+address nobody listens on and `max.block.ms` 1 000, the JVM arm's `enqueue` threw `RecordNotQueuedException` at
+1 070 ms. The native arm's `enqueue` returned a `Delivery` at 0 ms: the record was queued with no metadata, and
+`close()` then waited 300 200 ms, which is `message.timeout.ms`. B-74 had measured only the queue-full half.
+Where metadata is missing, the two builds give different true answers (`429` and `504`). Which way to resolve
+that is the question in B-04.
+
 ### 1.4 No library-side bound is portable, so the deadline lives in mostik
 
 | Fact | Where verified |
@@ -301,7 +308,9 @@ kafkakn B-73. If it is refuted (the record is *not* written), `504` is still cor
 1 046 ms, and the record was in the topic once the broker answered (kafkakn B-73, *Findings*). `504` is not
 pessimistic.
 
-**H2. `close` with the broker gone waits out `message.timeout.ms`, beyond a 30 s grace period.** Settled
+**H2. `close` with the broker gone waits out `message.timeout.ms`, beyond a 30 s grace period.** **Seen on
+native, 2026-09-27 (B-04):** 300 200 ms for one record queued against an unreachable broker. B-08 still owes the
+measurement it names: both builds, a service shutting down, several runs. Settled
 by B-08. If it holds, the process is `SIGKILL`ed with records still in the producer. Every one of them
 belongs to a request that was already answered `504`, so no answer becomes false. What changes is only
 how the process ends. A bound on `close` would then go to kafkakn.
@@ -331,7 +340,8 @@ the queue drains?
 
 **Open question 3 (owner, after kafkakn B-74).** If B-74 can tell "never queued" apart on only one arm, do
 both builds answer `504` for every expiry, or does each build answer what it can? **Moot, 2026-09-27:** B-74
-tells the two apart on both arms (§1.3, settled).
+tells the two apart on both arms (§1.3, settled). **Reopened in part, 2026-09-27:** when the topic's metadata is
+missing, native queues where the JVM refuses (§1.3, refuted in part). The owner's choice is in B-04.
 
 **Open question 4 (kafkakn B-73).** Does the JVM arm have a clean cancellation moment at all (§1.3,
 consequence 2)? **Answered, 2026-09-27: no.** The JVM caller is back only when the client lets go (§1.3,

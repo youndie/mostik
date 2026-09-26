@@ -1,7 +1,7 @@
 ---
 id: B-04
 title: "Take a kafkakn snapshot whose contract says what a cancelled send leaves behind"
-status: wip
+status: question
 priority: P0
 size: S
 stage: stage-3-bounded-wait
@@ -47,3 +47,42 @@ publication: kafkakn republishes its snapshot by hand, by running its `publish` 
   `RecordNotQueuedException.class`. This was read from the jar itself, not inferred from the date.
 - **The second half waits on B-01**, which is this item's blocker: mostik does not depend on kafkakn until
   then, so there is nothing yet to compile a call to `enqueue` against.
+
+## Iteration 1 (2026-09-27): the contract is wrong on one arm, and that is the question
+
+- **Both halves of the AC can be met.** mostik resolves the republished snapshot. A test calling
+  `enqueue(...).await()` and expecting `RecordNotQueuedException` compiled and ran on both builds.
+- **What it found.** kafkakn's contract says `enqueue` throws `RecordNotQueuedException` on both arms when
+  there is *no room in the queue, or no metadata*, within `max.block.ms`. B-74 measured only the queue-full
+  half. The metadata half was measured here, on the Linux box, with a bootstrap address nobody listens on and
+  `max.block.ms` 1 000:
+
+  | | JVM | native |
+  |---|---|---|
+  | `enqueue` | threw `RecordNotQueuedException` at 1 070 ms (*"Topic orders not present in metadata after 1000 ms"*) | **returned a `Delivery` at 0 ms**: queued, with no metadata |
+  | `close()` afterwards | 13 ms (nothing was queued) | **300 200 ms**: it waited out `message.timeout.ms`, 300 000 by default |
+
+  The first run had a 15 s bound around `enqueue(...).await()` and took 299 s on native. The two numbers
+  above come from a second, diagnostic run that timed `enqueue` and `close` separately. That test is not
+  kept: a suite that takes five minutes and fails on one arm cannot go to `main`.
+- **What it means for mostik.** Where the topic's metadata is missing (the broker unreachable, or a topic in
+  the allowlist that does not exist), the JVM build answers `429` (truthfully: never queued), and the native
+  build would answer `504` after the deadline (also truthfully: the record is queued, and it lands if the broker
+  comes back within `message.timeout.ms`). Both answers are true. They are different, and B-05's criterion
+  "both builds give the same status" fails in this case. Separately, research H2 is confirmed on native: an
+  unreachable broker makes `close` take 300 s against a 30 s grace period. That is B-08's measurement, arriving
+  early.
+- **The choices, for the owner:**
+  1. **Fix it in kafkakn:** the native `enqueue` waits for the topic's metadata up to `max.block.ms` and throws
+     `RecordNotQueuedException`, as the contract says. Both builds then answer `429`. This item waits for a
+     republished snapshot again. It matches research D7, "the kafkakn changes land in kafkakn".
+  2. **Correct kafkakn's contract to the measured behaviour,** and let mostik document the difference per build
+     (native `504`, JVM `429` for missing metadata). This item closes now. B-05's "same status" becomes
+     "same status, or the difference named".
+  3. **Either, plus a start-up check in mostik:** `partitionsFor` each allowlisted topic before serving, so a
+     misspelt topic in `MOSTIK_TOPICS` fails the start-up instead of reaching `enqueue`. This narrows the
+     difference to "broker unreachable" and does not remove it.
+
+  The recommendation is 1, with 3 as a separate item if it is wanted: the library's promise is what lets
+  mostik say one thing on both builds. **The owner decides.** The loop does not pick this item until then, and
+  B-05 stays blocked on it.
