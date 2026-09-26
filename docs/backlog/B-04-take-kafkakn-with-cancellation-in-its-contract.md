@@ -1,7 +1,7 @@
 ---
 id: B-04
 title: "Take a kafkakn snapshot whose contract says what a cancelled send leaves behind"
-status: question
+status: open
 priority: P0
 size: S
 stage: stage-3-bounded-wait
@@ -86,3 +86,24 @@ publication: kafkakn republishes its snapshot by hand, by running its `publish` 
   The recommendation is 1, with 3 as a separate item if it is wanted: the library's promise is what lets
   mostik say one thing on both builds. **The owner decides.** The loop does not pick this item until then, and
   B-05 stays blocked on it.
+
+## Decision (2026-09-27): choice 1
+
+**The owner chose to fix it in kafkakn.** It is filed there as B-76, *"Native enqueue refuses a record
+whose topic has no metadata within max.block.ms, as the contract says"* (youndie/kafkakn#98). Both builds
+will then answer `429` when metadata is missing.
+
+What this item now waits for, outside this repository:
+
+1. kafkakn B-76 merged;
+2. **a numbered kafkakn version** that carries it. Since kafkakn B-75 (#97), every publish gets its own
+   number, `0.1.0.<n>`, instead of overwriting `0.1.0-SNAPSHOT`. So this item pins that number in
+   `gradle/libs.versions.toml`. A pinned number cannot quietly move under a build, and a day-cached snapshot can
+   (research §1.8).
+
+**The loop does not pick this item until the registry lists such a version.** It is `open`, and its blocker
+is outside `blocked_by`'s reach. The check is cheap: `maven-metadata.xml` for `kafkakn-core`, then the version's
+changelog or commit.
+
+The acceptance then adds one line to the two above: the test that found the gap (`enqueue` with no metadata
+within `max.block.ms` throws `RecordNotQueuedException`) runs green on both builds and is kept.
