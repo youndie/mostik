@@ -39,8 +39,10 @@ gets `504` knows that nobody knows yet, and that retrying may write the record t
 
 1. The route checks the topic against the allowlist and the body against the size limit.
 2. It builds a `ProducerRecord` from the body, `Record-Key` and `Record-Header-*` (research D1).
-3. `withTimeout(deadline) { producer.send(record) }`.
-4. Metadata becomes `200`; an expiry becomes `429` or `504` (B-05); a named refusal becomes `502`
+3. `producer.enqueue(record)`, bounded by `max.block.ms` (= `MOSTIK_QUEUE_WAIT_MS`), not by a timeout.
+   `RecordNotQueuedException` becomes `429`.
+4. `withTimeout(deadline − elapsed) { delivery.await() }`. Metadata becomes `200`, an expiry becomes
+   `504` (B-05), and a named refusal becomes `502`
    (B-06); anything else becomes `504`.
 
 ## 4. Code anchors
@@ -65,11 +67,11 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 * **And:** the topic holds exactly those bytes, that key and that header at that partition and offset
 
 ### Scenario: queue full, never queued
-* **Given:** the producer's queue is at its bound and stays there past the deadline
+* **Given:** the producer's queue is at its bound and stays there past `MOSTIK_QUEUE_WAIT_MS`
 * **When:** a client posts
 * **Then:** `429` with `Retry-After` and `"error": "not-queued"`
 * **And:** after the queue drains, no record with that key is in the topic
-* *Unreachable until B-04; may stay unreachable on the JVM build (research §1.3).*
+* *Needs the republished kafkakn snapshot (B-04). kafkakn measured the same refusal on both arms.*
 
 ### Scenario: queued, broker silent
 * **Given:** the broker is paused after the record is queued
@@ -100,6 +102,7 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 
 ## 7. Quirks
 
-* `429` is documented and unreachable until B-04 (research §1.3).
+* `429` comes from `enqueue` throwing, never from a cut wait. A timeout around `enqueue` would answer
+  `429` for a record that lands on the JVM (kafkakn B-73, research §1.3).
 * A `504` record can be written after the client was told "unknown", even during shutdown: `close`
   flushes it. That is what "unknown" means.

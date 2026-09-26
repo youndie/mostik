@@ -42,7 +42,7 @@ parent_feature: feature-publish-over-http
 | Outcome | Status | Body |
 |---|---|---|
 | the broker acknowledged | `200` | `{"topic": …, "partition": …, "offset": …, "timestamp": …}` |
-| the deadline passed and the record was provably never queued | `429` + `Retry-After` | `{"error": "not-queued", "detail": …}` — **unreachable until B-04** |
+| the record was provably never queued | `429` + `Retry-After` | `{"error": "not-queued", "detail": …}` — `enqueue` threw `RecordNotQueuedException` within `MOSTIK_QUEUE_WAIT_MS`; arrives with B-04 |
 | the deadline passed after the record was queued, or `send` threw something mostik cannot classify | `504` | `{"error": "outcome-unknown", "detail": …, "outcome": "unknown", "retrySafe": false}` |
 | the broker named a refusal (for example the record is too large for the topic) | `502` | `{"error": "broker-rejected", "detail": …}` — **whether this is reachable is B-06** |
 

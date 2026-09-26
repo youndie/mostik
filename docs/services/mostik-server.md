@@ -43,15 +43,19 @@ read from Kafka.
 
 ## 3. How it is built
 
-**The deadline is mostik's, not the producer's.** `send` runs under `withTimeout(PUBLISH_DEADLINE_MS)`.
-No producer key bounds the whole call on both arms (research §1.4). So the bound lives where both
-builds share it, and the producer keys only shape what happens underneath.
+**The deadline is split into kafkakn's two steps** (research §1.4, correction):
 
-**An expiry is translated, never rethrown.** The coroutine's `TimeoutCancellationException` becomes
-`429` or `504`, depending on what kafkakn reports about whether the record was queued (B-05). Until
-kafkakn B-74 is taken (B-04), it is always `504`. The translation happens inside the route. A
-`TimeoutCancellationException` that escaped to Ktor would be a `500`, the one status research D2
-excludes.
+1. `enqueue(record)` runs with **no** coroutine timeout, bounded by `max.block.ms`, which mostik sets from
+   `MOSTIK_QUEUE_WAIT_MS`. `RecordNotQueuedException` becomes `429`.
+2. `delivery.await()` runs under `withTimeout(PUBLISH_DEADLINE_MS − time spent in step 1)`. An expiry
+   becomes `504`.
+
+A timeout around step 1 is the obvious code, and it is wrong. On the JVM, the Java client does not give
+the thread back while it waits for room, so the cut is honoured seconds late, and the record may be queued
+by then. kafkakn measured this in B-73.
+
+**An expiry is translated, never rethrown.** The `TimeoutCancellationException` from step 2 becomes `504`
+inside the route. Escaping to Ktor, it would be a `500`, the one status research D2 excludes.
 
 **The shutdown order is keel's, with the producer in the SQLite pool's slot** (research §1.6): not ready,
 then refusal, then the engine drain, then `producer.close()` as a `ShutdownParticipant`. The drain has to
@@ -88,6 +92,7 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 | `MOSTIK_BOOTSTRAP_SERVERS` | Kafka's `bootstrap.servers` | yes |
 | `MOSTIK_TOPICS` | the allowlist, comma-separated; any other topic is `404` | yes |
 | `MOSTIK_PUBLISH_DEADLINE_MS` | the bound on one publish; default `5000` (*target*) | no |
+| `MOSTIK_QUEUE_WAIT_MS` | becomes the producer's `max.block.ms`, which bounds `enqueue`; must be shorter than the deadline; default `1000` (*target*) | no |
 | `MOSTIK_MAX_RECORD_BYTES` | a larger body is `413` before `send` | no |
 | `MOSTIK_TRACY_ENDPOINT`, `MOSTIK_TRACY_KEY` | observability, both or neither, as in keel | no |
 | `KAFKA_*` | producer keys, outside the schema: `KAFKA_ACKS` → `acks`. kafkakn refuses a key neither arm honours | no |
@@ -97,8 +102,10 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 - **The `503` during shutdown is not mostik's.** kore's refusal answers `503` with the text
   `shutting down\n` and `Connection: close`, before any mostik code runs. It is the one error without
   mostik's JSON body (research §1.6, consequence 3).
-- **`429` is in the contract and unreachable** until B-04 takes kafkakn B-74. It may stay unreachable
-  on the JVM build even then (research §1.3, consequence 2).
+- **`429` needs the republished kafkakn snapshot** (B-04). The code it depends on, `enqueue` and
+  `RecordNotQueuedException`, is merged in kafkakn and not yet published.
+- **`max.block.ms` is mostik's, not the operator's.** A `KAFKA_MAX_BLOCK_MS` stops the start-up, because
+  the queue wait has one source, `MOSTIK_QUEUE_WAIT_MS`.
 - **A `504` record may still be in the producer when the process exits.** `close` flushes it, so it can
   be written after the client was told "unknown". That is consistent with "unknown". How long `close`
   takes with the broker gone is B-08.
