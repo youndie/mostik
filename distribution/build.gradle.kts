@@ -27,27 +27,24 @@ plugins {
 
 dependencies { implementation(project(":server")) }
 
-// THE THREE LINES THAT ARE KEEL'S. Everything else this module used to say — `application`, the
+// THE LINES THAT ARE THIS SERVICE'S. Everything else this module used to say — `application`, the
 // toolchain, the module-name collision guard, zavarnik's readiness default — is
 // `sborka.jvm-distribution` now (B-17, sborka#78). The workload stays here because what is worth
 // training a cache on is a property of the service rather than of the shape.
 jvmDistribution {
-    mainClass = "io.github.youndie.keel.jvm.MainKt"
+    mainClass = "io.github.youndie.mostik.jvm.MainKt"
 }
 
 zavarnik {
     training {
-        // THE TRAINING RUN GETS ITS OWN DATABASE, and the line exists to stop the run leaving one
-        // where the distribution is assembled. `KEEL_DB_PATH` is relative by default, the start
-        // script runs from `build/install/distribution`, so training used to create a database
-        // inside the thing a Dockerfile might copy — and a clone shipping `installDist` would ship
-        // the training run's rows. zavarnik#13 is what made this expressible; before it the training
-        // run inherited the build's environment and nothing else.
-        // INTO `build/` ITSELF, not a subdirectory of it. `mode=rwc` creates the database FILE and
-        // not its parent, so a path through a directory that does not exist yet fails at startup with
-        // a raw JDBC stack trace and no mention of the directory — which is exactly how this line was
-        // first written and what it cost to find out.
-        environment("KEEL_DB_PATH", layout.buildDirectory.file("aot-train-keel.db").get().asFile.path)
-        workload { get("http://127.0.0.1:8080/items") }
+        // THE TWO REQUIRED KEYS, pointing at nothing. Training starts the distribution, and mostik refuses
+        // to start without somewhere to publish and something it may publish to. Constructing the
+        // producer contacts no broker that training needs to exist.
+        //
+        // THE WORKLOAD IS `/version` UNTIL THERE IS A ROUTE (B-03). A cache trained on kore's routes alone
+        // has seen none of the publishing path, so B-03 moves the workload onto it.
+        environment("MOSTIK_BOOTSTRAP_SERVERS", "127.0.0.1:9092")
+        environment("MOSTIK_TOPICS", "orders")
+        workload { get("http://127.0.0.1:8080/version") }
     }
 }

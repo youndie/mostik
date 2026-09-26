@@ -29,12 +29,13 @@ file each in [`backlog/`](backlog/), cited as [B-01](backlog/B-01-from-template-
 
 ## Read this first
 
-**On `main` there is only research and the backlog, and that is deliberate.** The code on `main` is still
-keel's template (`youndie/keel@6be238d`). A feature document here would describe mostik over keel's code,
-which is intent written down as fact. The feature, API and service documents are `draft` on the branch
+**On `main` there is only research and the backlog, and that is deliberate.** The code on `main` is the
+skeleton B-01 made from keel's template (`youndie/keel@6be238d`): the kore wiring and a producer, and no
+route. A feature document here would describe a route that does not exist, which is intent written down
+as fact. The feature, API and service documents are `draft` on the branch
 **docs/drafts**. They merge when B-03 gives them their code anchors, and each is re-read against the code
-before it goes `active`. The template's own documents describe the template, and they stay where they
-are: `youndie/keel@6be238d!/docs/services/keel-server.md`.
+before it goes `active`. The kore wiring the skeleton kept is described by the template's own service
+document, `youndie/keel@6be238d!/docs/services/keel-server.md`; its store sections no longer apply.
 
 **What is verified** is [research-architecture](research/research-architecture.md) §1: each fact
 carries an address inside kafkakn, keel, kore or a registry listing, with the date it was read. The

@@ -1,4 +1,4 @@
-# keel's image. Two stages, and the pair is chosen together: a binary linked against the builder's
+# mostik's image. Two stages, and the pair is chosen together: a binary linked against the builder's
 # glibc will not start on a runtime with an older one, and the failure is the container exiting
 # before any of the application's own logging has run.
 #
@@ -53,19 +53,19 @@ FROM gcr.io/distroless/cc-debian13
 ENV MALLOC_ARENA_MAX=2
 # THE PATH CHANGES SHAPE IF A SECOND NATIVE TARGET IS TURNED ON, and this line is where that bites.
 #
-# `stageNativeImage` stages flat — `native-image/keel` — while the module declares one native target,
-# and per-target — `native-image/linux_x64/keel`, `native-image/linux_arm64/keel` — as soon as it
+# `stageNativeImage` stages flat — `native-image/mostik` — while the module declares one native target,
+# and per-target — `native-image/linux_x64/mostik`, `native-image/linux_arm64/mostik` — as soon as it
 # declares two. That is right: one binary per target under one name would be a `COPY` that finds a
 # file and the wrong one.
 #
-# keel ships with `keel.linuxArm64=false`, so the flat path is correct here. **A clone that turns it
-# on changes this line to `native-image/linux_x64/keel`** — or to `linux_arm64` with a builder stage
+# mostik ships with `mostik.linuxArm64=false`, so the flat path is correct here. **A build that turns it
+# on changes this line to `native-image/linux_x64/mostik`** — or to `linux_arm64` with a builder stage
 # platform to match, since `FROM --platform=linux/amd64` above decides which binary this image wants.
 # Without that edit the image build fails with "not found" naming the path and nothing about the
 # property that moved it.
-COPY --from=build /app/server/build/native-image/keel /app/keel
+COPY --from=build /app/server/build/native-image/mostik /app/mostik
 
 # EXEC FORM, ALWAYS. Shell form makes `/bin/sh -c` PID 1, and it does not forward `SIGTERM` — so the
 # process never sees the signal, the ordered shutdown never runs, and the container looks like it
 # stopped instantly and cleanly. That is the one thing this whole repository exists to get right.
-ENTRYPOINT ["/app/keel"]
+ENTRYPOINT ["/app/mostik"]

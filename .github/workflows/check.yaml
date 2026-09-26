@@ -1,4 +1,4 @@
-# keel's gate. `docs/` lives inside this repository, so `make check` needs no arguments.
+# mostik's gate. `docs/` lives inside this repository, so `make check` needs no arguments.
 #
 # From docs-bootstrap's reference workflow, with two deliberate changes: the draft gate is commented
 # out with B-10 as its address, and the build job is named as arriving with B-01 rather than being
@@ -139,7 +139,7 @@ jobs:
       # `linkDebugTestLinuxArm64` and not `build`: with two native targets `stageNativeImage` stages
       # both release binaries under one name and Gradle refuses (youndie/sborka#80). This path does not
       # go through it.
-      - run: ./gradlew linkDebugTestLinuxArm64 -Pkeel.linuxArm64=true --no-daemon
+      - run: ./gradlew linkDebugTestLinuxArm64 -Pmostik.linuxArm64=true --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:

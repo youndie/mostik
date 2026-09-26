@@ -1,4 +1,4 @@
-rootProject.name = "keel"
+rootProject.name = "mostik"
 
 pluginManagement {
     repositories {
@@ -27,7 +27,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 
     // Repositories with content filters, the shared `wip` catalog and the `.editorconfig` check.
-    // Every convention this repository uses comes from here: a flag in keel's own build files is a
+    // Every convention this repository uses comes from here: a flag in this repository's own build files is a
     // flag sborka forgot, and it is filed there rather than added here.
     id("io.github.youndie.sborka.settings") version "0.4.0.89"
 }

@@ -1,12 +1,8 @@
-package io.github.youndie.keel
+package io.github.youndie.mostik
 
-import io.github.smyrgeorge.sqlx4k.ConnectionPool
-import io.github.smyrgeorge.sqlx4k.Driver
-import io.github.smyrgeorge.sqlx4k.sqlite.sqlite
-import io.github.youndie.keel.item.ItemStore
-import io.github.youndie.keel.item.SqliteItemStore
-import io.github.youndie.keel.item.itemRoutes
-import io.github.youndie.keel.item.itemsSchema
+import io.github.youndie.kafkakn.KafkaProducer
+import io.github.youndie.kafkakn.ProducerConfig
+import io.github.youndie.kafkakn.kafkaProducer
 import io.github.youndie.kore.generated.KoreBuildIdentity
 import io.github.youndie.kore.health.LivenessGate
 import io.github.youndie.kore.health.ReadinessGate
@@ -34,31 +30,16 @@ import kotlin.time.Duration.Companion.seconds
  * and it is the answer to "does kore own the entry point" — it does not, and this is what that costs
  * in lines.
  */
-fun startKeel(settings: KeelSettings) {
+fun startMostik(settings: MostikSettings) {
     val startup = StartupGate()
     val readiness = ReadinessGate()
     val liveness = LivenessGate()
     val deadlines = ShutdownDeadlines()
 
-    // THE DATABASE IS OPENED BEFORE ANYTHING SERVES, and the schema is applied before that. A
-    // migration that runs after the first request is a migration racing a user.
-    //
-    // The URL is built by a named function rather than inline, and that is a scar: this line once
-    // held a broken template, so the service opened a database at a path named after the expression
-    // that should have produced it. It answered every request correctly and persisted nothing —
-    // a restart came back empty. The store suite could not catch it, because the suite builds its
-    // own URL; only running the binary twice could. `keelDatabaseUrl` is now one thing, tested.
-    val db: Driver =
-        sqlite(
-            url = keelDatabaseUrl(settings.dbPath),
-            options =
-                ConnectionPool.Options
-                    .builder()
-                    .maxConnections(POOL_SIZE)
-                    .build(),
-        )
-    val store: ItemStore = SqliteItemStore(db)
-    runBlocking { itemsSchema().forEach { db.execute(it).getOrThrow() } }
+    // THE PRODUCER IS BUILT BEFORE ANYTHING SERVES. Construction is where kafkakn refuses a key neither
+    // of its arms honours, so a misspelt `KAFKA_*` is a process that does not start rather than a
+    // setting silently dropped (research §1.10).
+    val producer: KafkaProducer = openProducer(settings)
 
     val server =
         embeddedServer(
@@ -75,7 +56,7 @@ fun startKeel(settings: KeelSettings) {
                 shutdownGracePeriod = deadlines.drain.inWholeMilliseconds
                 shutdownTimeout = deadlines.drain.inWholeMilliseconds + 5_000
             },
-            module = { keelModule(startup, readiness, liveness, store) },
+            module = { mostikModule(startup, readiness, liveness) },
         )
 
     // NOT `start(wait = true)`. The main thread has to be free to wait for the signal and then run
@@ -100,15 +81,18 @@ fun startKeel(settings: KeelSettings) {
             drain(EngineDrain(server, deadlines.drain, deadlines.drain + 5.seconds))
 
             // AFTER THE DRAIN, AND NEVER IN `ApplicationStopping` — which runs before the drain on
-            // Kotlin/Native and after it on the JVM, from identical source. Closing the pool there
-            // takes the connection out from under a request still being served on one of the two
+            // Kotlin/Native and after it on the JVM, from identical source. Closing the producer there
+            // takes it out from under a request still waiting for its acknowledgement on one of the two
             // platforms, and the code looks the same on both.
+            //
+            // `close` flushes: a record whose request was already answered `504` is still handed to the
+            // broker here, which is what "unknown" means. How long that takes with the broker gone is B-08.
             pool(
                 object : ShutdownParticipant {
-                    override val name = "sqlite"
+                    override val name = "kafka-producer"
 
                     override suspend fun stop() {
-                        db.close()
+                        producer.close()
                     }
                 },
             )
@@ -116,12 +100,28 @@ fun startKeel(settings: KeelSettings) {
     }
 }
 
-/** The routes this service serves, plus everything kore mounts. */
-fun Application.keelModule(
+/**
+ * The producer, or the reason there is none and the process ends.
+ *
+ * `Exception` and not a named type, because kafkakn's contract promises *that* construction throws on a
+ * configuration it refuses, not with which type — and at this boundary the only thing to do with any of them is
+ * print the message and stop (rule 3 of [mostikMain]).
+ */
+private fun openProducer(settings: MostikSettings): KafkaProducer =
+    try {
+        kafkaProducer(ProducerConfig(settings.producerProperties()))
+    } catch (refusal: Exception) {
+        refuse("the producer refused its configuration: ${refusal.message}")
+    }
+
+/**
+ * The routes this service serves, plus everything kore mounts. No route of mostik's own until B-03: what
+ * serves today is kore's probes and `/version`.
+ */
+fun Application.mostikModule(
     startup: StartupGate,
     readiness: ReadinessGate,
     liveness: LivenessGate,
-    store: ItemStore,
 ) {
     // BEFORE the probes and the routes. An interceptor installed later would let calls through that
     // arrived first, and the one thing this must never miss is the first request after the announce.
@@ -130,36 +130,4 @@ fun Application.keelModule(
     installKoreVersion(KoreBuildIdentity)
 
     install(ContentNegotiation) { json() }
-    itemRoutes(store)
 }
-
-/**
- * Where the database is, as sqlx4k wants it.
- *
- * **`mode=rwc` asks for the file to be created when it is not there.**
- *
- * It is kept as a statement of intent rather than as a fix, and the difference is worth the line
- * because this comment first claimed the opposite. It said the Rust driver would not create the file
- * and Xerial's JDBC would, so the parameter was what made one line work on both. **Measured on
- * sqlx4k 1.13.1, that is not true**: the `linuxX64` binary creates a missing database with the
- * parameter removed, exactly as the JVM half does. The claim came from reasoning about a default,
- * not from running anything.
- *
- * What it is worth keeping for is that neither driver documents the default as part of its contract,
- * and they are two different drivers — so a build that depends on them agreeing depends on something
- * nobody promised. Saying it costs nine characters.
- *
- * A function rather than an interpolation at the call site because it is the piece that was wrong
- * once and is worth a test. `KeelDatabaseUrlTest` is that test — and what it guards is the
- * interpolation, not the driver's behaviour.
- */
-internal fun keelDatabaseUrl(path: String): String = "sqlite://$path?mode=rwc"
-
-/**
- * Two connections, not one.
- *
- * One deadlocks the moment anything holds a transaction open while the code inside asks for a second
- * connection, and that shape arrives with a clone's first feature rather than being exotic. A
- * starting point to measure, not a tuned number.
- */
-private const val POOL_SIZE = 2

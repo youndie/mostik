@@ -1,4 +1,4 @@
-package io.github.youndie.keel
+package io.github.youndie.mostik
 
 import io.github.youndie.kore.config.ConfigurationException
 import io.github.youndie.kore.config.printConfig
@@ -17,28 +17,31 @@ import io.github.youndie.kore.config.systemEnvironment
  * 3. **The refusal is the message and nothing else.** A stack trace here buries the two lines that
  *    say which variable and why under frames nobody reading `kubectl logs` wants.
  */
-fun keelMain(args: Array<String>) {
+fun mostikMain(args: Array<String>) {
     if (args.any { it == "--print-config" }) {
-        val printed = KeelConfig.SCHEMA.printConfig()
+        val printed = MostikConfig.SCHEMA.printConfig()
         print(printed.text)
         endProcess(printed.exitCode)
     }
 
-    val settings =
+    val environment = systemEnvironment()
+    val configuration =
         try {
-            val configuration = KeelConfig.SCHEMA.read(systemEnvironment())
-            KeelSettings(
-                port = configuration[KeelConfig.PORT],
-                dbPath = configuration[KeelConfig.DB_PATH],
-                observed = configuration[KeelConfig.TRACY_ENDPOINT] != null,
-            )
+            MostikConfig.SCHEMA.read(environment)
         } catch (refusal: ConfigurationException) {
-            println(refusal.message)
-            endProcess(1)
+            refuse(refusal.message)
         }
+    val producerKeys = MostikConfig.kafkaPassThrough(environment).getOrElse { refuse(it.message) }
+    val settings = MostikSettings.from(configuration, producerKeys).getOrElse { refuse(it.message) }
 
     println(settings.describe())
-    startKeel(settings)
+    startMostik(settings)
+}
+
+/** Prints the reason, and nothing else, and ends the process — rule 3 above. */
+internal fun refuse(message: String?): Nothing {
+    println(message)
+    endProcess(1)
 }
 
 /**

@@ -9,8 +9,4 @@ build/
 .idea/
 *.iml
 
-# Measurements are written by `:server:measure --stand` into docs/research/ and are committed;
-# a local run writes nothing, so there is nothing to ignore here. See B-13.
-
 .DS_Store
-keel.db

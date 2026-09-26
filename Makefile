@@ -68,7 +68,7 @@ report:
 	-$(PY) scripts/code_anchors.py --docs $(DOCS) --repos $(REPOS)
 
 # The code gate, and CI's `build` job runs exactly this. One `build` for every target the project
-# declares — which today is `jvm` and `linuxX64`; `linuxArm64` is behind `keel.linuxArm64` and is not
+# declares — which today is `jvm` and `linuxX64`; `linuxArm64` is behind `mostik.linuxArm64` and is not
 # covered by CI yet (B-15, blocked on youndie/razves#3).
 #
 # What a green run here does NOT cover is in CLAUDE.md rather than assumed: a Mac cannot link an ELF,

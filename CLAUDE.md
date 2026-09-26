@@ -6,8 +6,9 @@ may write it twice. Built from [keel](https://github.com/youndie/keel) (a server
 Kotlin/Native binary and a JVM distribution, one image) and publishing through
 [kafkakn](https://github.com/youndie/kafkakn).
 
-**State (2026-09-26): nothing of mostik is built.** The code is keel's template at
-`youndie/keel@6be238d`, unchanged; B-01 turns it into mostik. The repository exists only on this Mac —
+**State (2026-09-27): the skeleton is built, with no route yet.** B-01 renamed keel's template
+(`youndie/keel@6be238d`), removed its SQLite store, and wired a kafkakn producer: built before anything
+serves, closed after the drain. B-03 adds the route. The repository exists only on this Mac —
 it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 
@@ -27,9 +28,9 @@ that its age is visible; `backlog.md` and the build are what cannot go stale.
    `docs/backlog/`; the index between the markers is generated, so edit the item and run
    `python3 scripts/backlog_index.py`.
 3. The layer document the task belongs to. **On `main` there are none yet, deliberately**: the feature,
-   API and service documents are `draft` on the branch **docs/drafts** and merge when B-03 gives them code
-   anchors. Until then, the template's own documents describe the code on `main`, at
-   `youndie/keel@6be238d!/docs/services/keel-server.md`.
+   API and service documents are `draft` on the branch **docs/drafts** and merge when B-03 gives them the
+   route. Until then, the kore wiring the skeleton kept is described by the template's service document,
+   `youndie/keel@6be238d!/docs/services/keel-server.md` — its store sections no longer apply.
 4. The skills, when the task is building rather than documenting: `ktor-server-feature` for the route,
    `kmp-testing` for the suites, `native-service-bootstrap` for the skeleton, `backlog-item` for an
    item. The repository is read **before** the skill.
@@ -101,7 +102,7 @@ Not covered by this: a pull request a person opened. The loop merges what the lo
 
 Most of these are kore's and sborka's, restated because a session here will not have their
 repositories open. The full list with addresses is keel's, at
-`youndie/keel@6be238d!/docs/services/keel-server.md` §8. The sqlx4k line goes with sqlx4k in B-01.
+`youndie/keel@6be238d!/docs/services/keel-server.md` §8.
 
 - **Never put shutdown work in `ApplicationStopping`.** On Kotlin/Native it runs *before* the drain
   and on the JVM *after* it, from identical source. This is the reason kore exists.
@@ -115,8 +116,6 @@ repositories open. The full list with addresses is keel's, at
 - **Two sibling modules applying different Kotlin plugins need the root build to declare both with
   `apply false`.** Otherwise the Kotlin plugin's shared build service exists under two classloaders
   and the build fails naming two of them and nothing else.
-- **Exactly one sqlx4k driver.** Two do not link — `duplicate symbol: std::panicking::EMPTY_PANIC` —
-  and it is a link error, not a resolution error.
 - **`ENTRYPOINT` in exec form, always.** Shell form makes `/bin/sh -c` PID 1, which does not forward
   `SIGTERM`; the run then looks like an instant clean shutdown.
 - **Never assert an exit code across the two targets.** A clean `SIGTERM` exits `0` on Native and
