@@ -12,14 +12,20 @@ blocked_by: [B-03, B-04]
 
 The reason mostik exists. Feature: publish over HTTP.
 
-- **The decision and its reason.** `send` runs under `PUBLISH_DEADLINE_MS`, enforced by mostik and not by
-  producer keys, because no library bound is portable (research §1.4). When the deadline expires:
-  - if kafkakn says the record was never queued: `429 not-queued` with `Retry-After`;
-  - otherwise: `504 outcome-unknown`, with a body carrying `"outcome": "unknown"` and `"retrySafe": false`.
+- **The decision and its reason.** The deadline is split in two, following kafkakn B-74 (research §1.4,
+  correction):
+  1. `enqueue` runs with no coroutine timeout, bounded by `max.block.ms`, which mostik sets from
+     `MOSTIK_QUEUE_WAIT_MS`. A `RecordNotQueuedException` is `429 not-queued` with `Retry-After`.
+  2. `Delivery.await()` runs under `withTimeout(PUBLISH_DEADLINE_MS − time spent in step 1)`. An expiry is
+     `504 outcome-unknown`, with a body carrying `"outcome": "unknown"` and `"retrySafe": false`.
 
-  A `send` that throws something mostik cannot classify is also `504` (research D2).
-- If B-04 leaves one arm without the distinction, that build answers `504` for every expiry, and the
-  feature document says so per build (research open question 3).
+  Anything else thrown in step 2 that mostik cannot classify is also `504` (research D2).
+- **Rejected: a timeout around `enqueue`.** kafkakn B-73 measured that on the JVM a caller cut while the
+  client waits for room gets control back only when the client lets go, about 5 s later in its run. The
+  record may be queued by then. That timeout would break the deadline and would answer `429` for a record
+  that lands.
+- The start-up refuses `MOSTIK_QUEUE_WAIT_MS ≥ MOSTIK_PUBLISH_DEADLINE_MS`, and refuses any
+  `KAFKA_MAX_BLOCK_MS`: one value with two sources drifts.
 - Not covered: whether a thrown `send` can be `502` (B-06).
 
 - AC, *queue full*: with the producer's queue held at its bound past the deadline, the client gets `429`,
@@ -27,5 +33,7 @@ The reason mostik exists. Feature: publish over HTTP.
 - AC, *queued, broker silent*: with the broker paused after the record is queued, the client gets `504`
   within the deadline plus a margin. After the broker resumes, the record **is** found in the topic.
   This scenario is what proves the word "unknown" is needed.
-- AC: both builds give the same status in both scenarios, or the documents name the difference.
+- AC: both builds give the same status in both scenarios; kafkakn measured the same split on both arms.
+- AC: a queue wait of 5 000 ms with a deadline of 5 000 ms, or any `KAFKA_MAX_BLOCK_MS`, stops the
+  start-up, and the message names the keys.
 - Anchors: the route's feature package in `server/src/commonMain/kotlin/`.

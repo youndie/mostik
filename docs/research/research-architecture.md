@@ -85,6 +85,25 @@ filed upstream as [kafkakn B-74](https://github.com/youndie/kafkakn/pull/94).
 other than before the dispatch to `Dispatchers.IO`. If that holds, the `429` path stays unreachable on
 the JVM build even after B-74, and the two builds answer differently. That is open question 4.
 
+**Settled by kafkakn, 2026-09-27 — both consequences, and consequence 1 in mostik's favour.**
+
+- **Consequence 2 held, and was measured.** kafkakn B-73 cut a `send` at 1 s while it waited for room,
+  with the broker paused. On native the caller was back at 1 000 ms and the record was never queued.
+  On the JVM the caller got control back only at about **5 030 ms**, when the broker answered again, and
+  the record had been queued and landed (`youndie/kafkakn@fe4f1c4!/docs/backlog/B-73-a-cancelled-send.md`,
+  *Findings*). A cancellation is not a portable way to bound the wait for room, and on the JVM it does
+  not even keep the deadline.
+- **Consequence 1 no longer holds.** kafkakn B-74 split `send` into two steps, the Java client's own
+  shape: `enqueue(record): Delivery` and `Delivery.await()`. `enqueue` throws
+  `RecordNotQueuedException` on both arms when the wait for room or for the topic's metadata outlasts
+  `max.block.ms`. That record was never queued, and a retry cannot write it twice. Measured with the broker
+  paused: 2 398 ms on native and 2 010 ms on the JVM for `max.block.ms` 2 000, and the refused record was
+  absent from the topic (`youndie/kafkakn@fe4f1c4!/docs/backlog/B-74-a-cut-wait-says-whether-the-record-was-queued.md`;
+  the surface is `youndie/kafkakn@fe4f1c4!/kafkakn-core/src/commonMain/kotlin/io/github/youndie/kafkakn/KafkaProducer.kt`).
+
+  So `429` is reachable on **both** builds. It comes from `enqueue` throwing, not from a cut wait. The
+  correction to the design is §1.4's.
+
 ### 1.4 No library-side bound is portable, so the deadline lives in mostik
 
 | Fact | Where verified |
@@ -96,6 +115,20 @@ the JVM build even after B-74, and the two builds answer differently. That is op
 **Consequence.** A deadline configured in producer keys would be two different keys with two different
 exception types, and neither would bound the whole request. mostik's `PUBLISH_DEADLINE_MS` is enforced by
 mostik around `send`. The producer keys pass through for operators and bound nothing mostik promises.
+
+**Correction after kafkakn B-74 (2026-09-27): one producer key is portable now, and mostik owns it.**
+The native arm's fixed 120 s is gone. kafkakn's own wait for room reads `max.block.ms`, with the Java
+client's default of 60 s, so `max.block.ms` bounds the first step on both arms. The deadline is therefore
+split in two, and the split is what makes both answers true:
+
+1. `enqueue` runs **without** a coroutine timeout, bounded by `max.block.ms`. mostik sets that key from its
+   own `MOSTIK_QUEUE_WAIT_MS`. A timeout around `enqueue` would break the deadline on the JVM (§1.3,
+   settled) and would add nothing on native.
+2. `await()` runs under `withTimeout(PUBLISH_DEADLINE_MS − time spent in step 1)`.
+
+A throw in step 1 is `429`, and an expiry in step 2 is `504`. The start-up refuses a queue wait that is not
+shorter than the deadline (D6), and it refuses a `KAFKA_MAX_BLOCK_MS`: one value with two sources is how
+the two drift apart.
 
 ### 1.5 The shutdown order is already measured — mostik re-proves it rather than discovering it
 
@@ -211,7 +244,8 @@ failure is exactly the case in which mostik does not know. The owner chose `504`
 - `503` for every expiry, which is sometimes "written";
 - an idempotency key, which moves deduplication onto the reader and doubles the first version.
 
-The price is §1.3: until kafkakn B-74, `429` is unreachable. Whether `502` is reachable is H3.
+The price was §1.3: until kafkakn B-74, `429` was unreachable. B-74 closed on 2026-09-27, so `429`
+arrives with B-04, on both builds. Whether `502` is reachable is H3.
 
 ### D3. Both builds ship, and both run every scenario (owner, 2026-09-26)
 
@@ -234,7 +268,8 @@ contract with no second reader is a copy with a build of its own.
 
 mostik refuses to start when `drain < PUBLISH_DEADLINE_MS + margin`, and the message names both values.
 kore's configuration refuses a missing value the same way, so this is one more refusal of the same kind.
-The reason is §1.6, consequence 2.
+The reason is §1.6, consequence 2. The same check covers the queue wait: `MOSTIK_QUEUE_WAIT_MS <
+MOSTIK_PUBLISH_DEADLINE_MS`, or step 2 of §1.4's split has no time left.
 
 ### D7. The kafkakn changes land in kafkakn
 
@@ -259,6 +294,9 @@ open question 5 until the owner confirms it.
 
 **H1. A record whose `send` was cancelled after it was queued is written afterwards.** Settled by
 kafkakn B-73. If it is refuted (the record is *not* written), `504` is still correct but pessimistic.
+**Confirmed 2026-09-27** on both arms. A `send` cut at 1 s with the broker paused returned in 1 021 to
+1 046 ms, and the record was in the topic once the broker answered (kafkakn B-73, *Findings*). `504` is not
+pessimistic.
 
 **H2. `close` with the broker gone waits out `message.timeout.ms`, beyond a 30 s grace period.** Settled
 by B-08. If it holds, the process is `SIGKILL`ed with records still in the producer. Every one of them
@@ -289,10 +327,12 @@ into the proxy's `502`s.
 the queue drains?
 
 **Open question 3 (owner, after kafkakn B-74).** If B-74 can tell "never queued" apart on only one arm, do
-both builds answer `504` for every expiry, or does each build answer what it can?
+both builds answer `504` for every expiry, or does each build answer what it can? **Moot, 2026-09-27:** B-74
+tells the two apart on both arms (§1.3, settled).
 
 **Open question 4 (kafkakn B-73).** Does the JVM arm have a clean cancellation moment at all (§1.3,
-consequence 2)?
+consequence 2)? **Answered, 2026-09-27: no.** The JVM caller is back only when the client lets go (§1.3,
+settled). This is why mostik bounds step 1 with `max.block.ms` and never with a timeout (§1.4).
 
 **Open question 5 (owner).** Documents in English (D9)?
 
@@ -302,6 +342,7 @@ consequence 2)?
 
 The order is in [backlog.md](../../backlog.md). First the skeleton (B-01, B-02). Then the happy path
 (B-03), which is when the drafted documents on **docs/drafts** get their first code anchors. Then the
-deadline, which depends on kafkakn: B-04 waits for a republished snapshot carrying B-73 and B-74. The
+deadline, which depends on kafkakn: B-73 and B-74 are merged (kafkakn `fe4f1c4`), and B-04 waits only for
+the snapshot to be republished. kafkakn does that by hand, through its `publish` workflow. The
 shutdown items come last: B-07 checks the drain budget, B-08 measures `close` with the broker gone, and
 B-09 is the `SIGTERM` oracle.

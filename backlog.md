@@ -20,8 +20,10 @@ turns it into mostik. The feature, API and service documents are drafted on the 
 and are merged as the code gives them anchors.
 
 **Part of this backlog waits on another repository.** The deadline answers depend on kafkakn B-73 and
-B-74 (youndie/kafkakn#94). B-04 is the item that makes that dependency visible here. Until it closes,
-`429` cannot be computed, and every expired deadline answers `504` (research §1.3).
+B-74. Both merged on 2026-09-27 (kafkakn `fe4f1c4`): `enqueue` either throws `RecordNotQueuedException`,
+which becomes `429`, or returns a `Delivery` whose cut `await()` becomes `504`, on both arms (research
+§1.3, settled). B-04 makes the dependency visible here, and it now waits only for kafkakn to republish its
+snapshot.
 
 ## Stages
 

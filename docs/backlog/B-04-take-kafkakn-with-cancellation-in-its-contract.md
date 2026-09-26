@@ -21,15 +21,19 @@ mostik's deadline answers depend on two kafkakn items, filed in youndie/kafkakn#
 - kafkakn B-74 lets a caller whose wait was cut tell "never queued" from "queued, outcome unknown"
   (research §1.3).
 
-The published snapshot is from 2026-09-25 and holds neither. A merged pull request is not a
-publication: kafkakn republishes its snapshot by hand (research §1.8).
+**Both merged on 2026-09-27** (kafkakn #95 and #96, `fe4f1c4`). B-73 measured that a record cut after
+queueing lands, and that on the JVM a cut while waiting for room is not honoured. B-74 added
+`enqueue(record): Delivery` and `RecordNotQueuedException`, bounded by `max.block.ms` on both arms
+(research §1.3, settled).
+
+The published snapshot is still from 2026-09-25 and holds neither. A merged pull request is not a
+publication: kafkakn republishes its snapshot by hand, by running its `publish` workflow (research §1.8).
 
 - **The decision and its reason.** This item is done when the snapshot mostik resolves carries B-74's
   API. mostik does not build kafkakn from a checkout, because the published klib is what a stranger
   links (research §1.8, consequence 1).
-- If kafkakn decides that B-74 cannot hold on one arm, this item records what that arm gives, and
-  research open question 3 goes to the owner.
 
-- AC: `maven-metadata.xml` for `kafkakn-core` shows a `lastUpdated` after kafkakn B-74 merged. mostik
-  compiles a call to B-74's API on both builds.
+- AC: `maven-metadata.xml` for `kafkakn-core` shows a `lastUpdated` after 2026-09-27, when kafkakn B-74
+  merged. mostik compiles a call to `enqueue`, `Delivery.await()` and `RecordNotQueuedException` on both
+  builds.
 - Anchors: `gradle/libs.versions.toml`.
