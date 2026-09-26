@@ -1,81 +1,63 @@
-# CLAUDE.md — keel
+# CLAUDE.md — mostik
 
-A GitHub template repository for a Kotlin server that ships twice: one source, a JVM distribution and
-a Kotlin/Native binary, both runnable, both tested, one image. konekt with the domain removed.
+An HTTP → Kafka bridge whose status code is a true statement about the record: `200` is in the topic
+at the returned offset, `429` and `503` are not in it, and `504` means nobody knows yet and a retry
+may write it twice. Built from [keel](https://github.com/youndie/keel) (a server that ships twice: a
+Kotlin/Native binary and a JVM distribution, one image) and publishing through
+[kafkakn](https://github.com/youndie/kafkakn).
 
-**The template is finished against its brief.** Three targets build, 23 tests run on each of `jvm`
-and `linuxX64` from one source and the same binary runs on arm64 hardware, both halves pass kore's
-shutdown oracle, parity holds after a normaliser written first, the image is 13 972 497 bytes, and the
-stand measured p95 at 1.86 ms. A webhook relay was built from it and needed no change to any
-infrastructure file.
-
-What is **not** done: the kotlin.website page (B-22). What is deliberately absent and says so: a
-`scratch` image (B-16, B-18), an automated stand run (B-13 — the measurement was taken by hand), and
-authentication, a chart and a client, which are non-goals.
-
-This paragraph has been wrong three times — *"nothing is built"*, *"no test at all"*, *"`linuxArm64`
-is built and tested by nobody"* — each true when written and false within a day. `backlog.md` and the
-build are what cannot go stale; prefer them.
-
-This paragraph said *"nothing is built"*, and then *"no test at all"*, each wrong one iteration
-later. A sentence about the state
-of a repository has no way to fail; `backlog.md` and the build do — prefer them. Two neighbouring
-repositories in this portfolio had the equivalent sentence wrong for weeks in both directions, which
-is why it is worth naming here.
+**State (2026-09-26): nothing of mostik is built.** The code is keel's template at
+`youndie/keel@6be238d`, unchanged; B-01 turns it into mostik. The repository exists only on this Mac —
+it is not on GitHub and not a mutagen session yet (see *Where things build*). This sentence is dated so
+that its age is visible; `backlog.md` and the build are what cannot go stale.
 
 ## How to start a session
 
-1. [docs/research/research-architecture.md](docs/research/research-architecture.md) — what was read
-   in the artefacts and the repositories on 2026-09-16, and what follows from it. Skipping it costs a
-   day per finding. The four that most often contradict what an example would lead you to write:
-   - **one `ItemStore`, not two** (§1.6, D1). `sqlx4k-sqlite` publishes a real JVM variant and it is
-     `org.xerial:sqlite-jdbc` underneath, so the split the brief priced at two implementations is one
-     the library already carries;
-   - **zavarnik refuses a project without the `application` plugin, and `application` does not apply
-     to a multiplatform module** (§1.8, D5). That is why `:distribution` exists, why it is not called
-     `:server-jvm` (the jar name collides with `:server`'s own), and why the root `build.gradle.kts`
-     declares both Kotlin plugins with `apply false`;
-   - **`scratch` needs five paths copied out of the build stage** (§1.5), and a static image's smoke
-     test has to reach a *rendered page* — a `401` was once read as a pass, and every rendered byte
-     goes through glibc `iconv`, which is `dlopen`ed;
-   - **KTOR-9891 is fixed and is not the gconv issue** (§1.9, D3). The brief joined two unrelated
-     tickets; the decision survived and its address changed.
+1. [docs/research/research-architecture.md](docs/research/research-architecture.md) — what was read in
+   kafkakn, keel, kore and the registry on 2026-09-26, and what follows. The three findings that most
+   often contradict what the obvious implementation would do:
+   - **`send` is already cancellable on both arms** (§1.1). `withTimeout` bounds the wait today; the
+     question is what the answer means once it has.
+   - **A cancelled `send` does not recall a queued record, and the caller cannot tell whether it was
+     queued** (§1.2, §1.3). So an expired deadline is `504 outcome-unknown`, never `503`, and `429` is
+     unreachable until kafkakn B-73/B-74 land (youndie/kafkakn#94) and mostik's B-04 takes them.
+   - **The drain must outlast the publish deadline** (§1.6), or a request in flight at `SIGTERM` gets a
+     reset connection instead of an answer.
 2. [backlog.md](backlog.md) — the goal, the stages, the index. Items are one file each in
    `docs/backlog/`; the index between the markers is generated, so edit the item and run
    `python3 scripts/backlog_index.py`.
-3. The layer document the task belongs to — [docs/services/keel-server.md](docs/services/keel-server.md)
-   for the modules and the twenty quirks, [docs/api/endpoint-items.md](docs/api/endpoint-items.md)
-   for the routes, [docs/features/feature-item-round-trip.md](docs/features/feature-item-round-trip.md)
-   for the scenarios that are the template's acceptance. The map is [docs/README.md](docs/README.md).
-4. The skills, when the task is building rather than documenting: `native-service-bootstrap` for the
-   skeleton, `ktor-server-feature` for a route inside a service that already runs, `kmp-testing` for
-   the suites, `backlog-item` for an item. The repository is read **before** the skill.
+3. The layer document the task belongs to. **On `main` there are none yet, deliberately**: the feature,
+   API and service documents are `draft` on the branch **docs/drafts** and merge when B-03 gives them code
+   anchors. Until then, the template's own documents describe the code on `main`, at
+   `youndie/keel@6be238d!/docs/services/keel-server.md`.
+4. The skills, when the task is building rather than documenting: `ktor-server-feature` for the route,
+   `kmp-testing` for the suites, `native-service-bootstrap` for the skeleton, `backlog-item` for an
+   item. The repository is read **before** the skill.
 
-## The rule that keeps this a template
+## Where a line goes
 
-**Nothing goes to keel except renaming.** Every line that is neither domain nor template renaming is
-a defect somewhere else, and it has a destination:
+mostik is a product, not a template, so its own code belongs here. What does not:
 
 | the line was | it goes to |
 |---|---|
 | a build flag, a linker option, a CI step | [sborka](https://github.com/youndie/sborka) |
 | lifecycle, probes, config, shutdown | [kore](https://github.com/youndie/kore) |
-| a procedure that had to be worked out | the `native-service-bootstrap` skill |
-
-If keel accumulates fixes, it is turning back into konekt. The mechanical half of the rule is the two
-line budgets — 500 lines of Kotlin under `server/`, 100 of Gradle across the repository — and going
-over either is the signal, not the failure.
+| what a producer call means, how long it waits, what it throws | [kafkakn](https://github.com/youndie/kafkakn) — research D7 |
+| wiring every service from keel would need | [keel](https://github.com/youndie/keel) |
 
 ## The loop merges its own pull requests
+
+*Inherited from keel, and it applies once the repository is on GitHub; until then there is no CI to
+be green.*
 
 **A `/loop` iteration merges the pull request it opened, once CI is green.** One item, one branch, one
 pull request, merged by the loop — `gh pr merge --rebase --delete-branch`.
 
 This is a deliberate trade and it is worth naming rather than discovering. What is given up is
 review: nobody reads the diff before it is on `main`. What is bought is a loop that runs unattended,
-and without it the loop stops after one item — every other `P0` here is `blocked_by: B-01`, statuses
-only change on `main` when a pull request merges, and an item whose blocker still reads `open` is not
-pickable. The first iteration hit exactly that wall.
+and without it the loop stops after one item — statuses only change on `main` when a pull request
+merges, and an item whose blocker still reads `open` is not pickable. keel's first iteration hit exactly
+that wall.
 
 The conditions, which are not negotiable inside an iteration:
 
@@ -86,7 +68,7 @@ The conditions, which are not negotiable inside an iteration:
   as one.
 - **A `question` item is never merged into being decided.** It goes to `main` as a `question`, and
   the loop stops there.
-- **Anything routed out of keel — sborka, kore, the skill — is filed before the merge**, not after.
+- **Anything routed out of mostik — kafkakn, sborka, kore, keel — is filed before the merge**, not after.
   A finding that exists only in a merged commit message is a finding nobody will act on.
 - **`--rebase`, not squash.** The commit messages carry the reasoning; a squash collapses them into
   the pull request title and the *why* is what survives longest.
@@ -95,11 +77,10 @@ Not covered by this: a pull request a person opened. The loop merges what the lo
 
 ## The two rules
 
-- **`main` describes what exists.** Every layer document is `active` since B-10, and each was
-  **re-read against the code** rather than flipped — that re-reading found an instruction in the
-  service document that ran and silently produced the wrong artefact. `docs_check.py --on-main` is
-  the mechanical half and it is **on**. A new document is `draft` in its pull request and `active`
-  when somebody has checked it, in that order.
+- **`main` describes what exists.** A layer document is `draft` on its branch and goes `active` only
+  after it is **re-read against the code**, not flipped. In keel that re-reading found an instruction
+  that ran and silently produced the wrong artefact. `docs_check.py --on-main` is the mechanical half,
+  and it is on in CI's push job.
 - **What was verified is separated from what was assumed, explicitly.** Everything in research §1
   carries a file, a coordinate or a URL with the date it was read. Everything else says "decision" or
   "hypothesis", and a hypothesis names the item that settles it. A document that blurs the two is a
@@ -107,9 +88,9 @@ Not covered by this: a pull request a person opened. The loop merges what the lo
 
 ## Rules that are cheap to follow and expensive to discover
 
-Most of these are kore's and sborka's, restated because a keel session will not have their
-repositories open. The full list with addresses is
-[docs/services/keel-server.md](docs/services/keel-server.md) §8.
+Most of these are kore's and sborka's, restated because a session here will not have their
+repositories open. The full list with addresses is keel's, at
+`youndie/keel@6be238d!/docs/services/keel-server.md` §8. The sqlx4k line goes with sqlx4k in B-01.
 
 - **Never put shutdown work in `ApplicationStopping`.** On Kotlin/Native it runs *before* the drain
   and on the JVM *after* it, from identical source. This is the reason kore exists.
@@ -145,8 +126,10 @@ repositories open. The full list with addresses is
 
 ## Where things build
 
-This repository is a mutagen session (one-way replica, alpha here, beta `keel` on the Linux box).
-**Gradle runs there**, through the wrapper:
+**Not yet synced.** Until a mutagen session `mostik` exists (one-way replica, alpha here, beta on the
+Linux box, like every other repository here), `wsl-run` has nowhere to run and Gradle has nowhere to
+build — a Mac cannot link the ELF. Creating that session is the owner's step, before B-01. Once it
+exists, **Gradle runs there**, through the wrapper:
 
 ```bash
 ~/.claude/bin/wsl-run ./gradlew build
@@ -180,12 +163,10 @@ LOCAL=1 make check      # the gate; CI runs exactly it
 LOCAL=1 make report     # the two non-blocking reports
 ```
 
-`code_anchors` reports most of this tree rotten today, and that is correct — the paths are where the
-code will live, and the count going down is how the template arriving looks from here. It does not
-become a gate when it reaches zero: a path quoted *as obsolete* is indistinguishable by machine from
-a live one.
+`code_anchors` reports the addresses inside kafkakn, keel and kore in their own section and never
+counts them as rot.
 
 ## Commits
 
 English, Conventional Commits, no tool signature. `docs(research): …`, `feat(server): …`,
-`build(server-jvm): …`, `ci: …`. Branch names the same way — `feat/item-store`, `fix/jvm-distribution`.
+`build(server-jvm): …`, `ci: …`. Branch names the same way — `feat/publish-route`, `fix/drain-budget`.
