@@ -71,7 +71,7 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 * **When:** a client posts
 * **Then:** `429` with `Retry-After` and `"error": "not-queued"`
 * **And:** after the queue drains, no record with that key is in the topic
-* *Needs the republished kafkakn snapshot (B-04). kafkakn measured the same refusal on both arms.*
+* *kafkakn measured the same refusal on both arms (B-74), and it is published (B-04).*
 
 ### Scenario: queued, broker silent
 * **Given:** the broker is paused after the record is queued

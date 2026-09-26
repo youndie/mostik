@@ -102,8 +102,9 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 - **The `503` during shutdown is not mostik's.** kore's refusal answers `503` with the text
   `shutting down\n` and `Connection: close`, before any mostik code runs. It is the one error without
   mostik's JSON body (research §1.6, consequence 3).
-- **`429` needs the republished kafkakn snapshot** (B-04). The code it depends on, `enqueue` and
-  `RecordNotQueuedException`, is merged in kafkakn and not yet published.
+- **`429` depends on a kafkakn API that is only a day old.** `enqueue` and `RecordNotQueuedException` were
+  published in the snapshot of 2026-09-26 (B-04). A build that resolved an older cached snapshot does not
+  have them, and fails to compile rather than answering wrongly.
 - **`max.block.ms` is mostik's, not the operator's.** A `KAFKA_MAX_BLOCK_MS` stops the start-up, because
   the queue wait has one source, `MOSTIK_QUEUE_WAIT_MS`.
 - **A `504` record may still be in the producer when the process exits.** `close` flushes it, so it can
