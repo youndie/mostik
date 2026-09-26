@@ -116,6 +116,7 @@ relates to the publish deadline (§1.6). What `close` does when the broker is go
 | New requests during shutdown are refused by `installShutdownRefusal(isShuttingDown = …)` | same file, `keelModule` |
 | `ShutdownDeadlines()` defaults: `preDrainWait` 5 s, `drain` 15 s, `releaseGroup` 3 s; grace period 30 s (the Kubernetes default) | `youndie/kore@47825a6!/kore-core/src/commonMain/kotlin/io/github/youndie/kore/lifecycle/ShutdownPlan.kt`; `git log -S` shows the defaults unchanged since they were introduced, so they are the values of the pinned 0.1.4 |
 | The Ktor engine's `shutdownGracePeriod` is set from `deadlines.drain` | `Wiring.kt` |
+| kore's refusal answers `503` with the plain-text body `shutting down\n` and `Connection: close`. mostik's JSON error shape does not reach it | `youndie/kore@47825a6!/kore-ktor/src/commonMain/kotlin/io/github/youndie/kore/ktor/ShutdownRefusal.kt` (`SHUTTING_DOWN_BODY`) |
 
 **Consequence 1.** The producer is a `ShutdownParticipant` in the slot the SQLite pool holds now, and
 nothing else in the sequence changes.
@@ -124,6 +125,11 @@ nothing else in the sequence changes.
 real answer. If the drain is shorter than that, the engine cuts the request, and the client sees a reset
 connection, which is worse than a `504`. So `drain ≥ PUBLISH_DEADLINE_MS + margin` is a start-up check
 (D6). With the defaults (a drain of 15 s and a deadline of 5 s) the check holds.
+
+**Consequence 3, found while drafting the API.** The brief promised `503 shutting-down` in mostik's
+JSON error shape. It is kore's text, not mostik's JSON, and the draft says so. Risk 1's rule, "every
+mostik error body carries its code", has this one exception. If a caller has to tell mostik's `503`
+from a proxy's, the change is a configurable body in kore, not a second refusal in mostik.
 
 ### 1.7 The toolchains are already aligned — *deviation from the brief*
 
@@ -251,7 +257,8 @@ equivalent. Settled by B-06. Until then `502` is only for refusals the broker na
 
 **Risk 1. The proxy times out before mostik does, and answers `504` itself.** The client then sees a
 `504` without mostik's body, and cannot tell it from mostik's. Mitigation: every mostik error body
-carries its `error` code, so a `504` without one is known to be the proxy's. The deployment notes
+carries its `error` code, so a `504` without one is known to be the proxy's. The one exception is
+kore's `503` during shutdown (§1.6, consequence 3), and it is a `503`, not a `504`. The deployment notes
 state that the proxy's upstream timeout must exceed `PUBLISH_DEADLINE_MS` + margin. mostik cannot read
 the proxy's configuration, so this is documented rather than checked.
 
