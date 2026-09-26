@@ -5,13 +5,13 @@ status: open
 priority: P1
 size: M
 stage: stage-2-publish
+epic: feature-publish-over-http
 blocked_by: [B-01, B-02]
 ---
 
 # B-03 — `POST /topics/{topic}/records` answers `200` with the offset the broker gave
 
-The happy path, and the two refusals that happen before the producer is touched. Feature: publish over
-HTTP.
+The happy path, and the two refusals that happen before the producer is touched. Feature: [feature-publish-over-http](../features/feature-publish-over-http.md).
 
 - **The decision and its reason.** The value is the request body, byte for byte. The key comes from
   `Record-Key` and record headers from `Record-Header-<name>`, in order (research D1). `200` is sent

@@ -5,6 +5,7 @@ status: open
 priority: P1
 size: S
 stage: stage-4-shutdown
+epic: feature-shutdown-without-loss
 blocked_by: [B-05]
 ---
 
@@ -12,7 +13,7 @@ blocked_by: [B-05]
 
 kafkakn's `close` flushes and states no bound. With the broker gone, the native arm may wait out
 `message.timeout.ms` (300 000 ms by default), which is far beyond a 30 s grace period (research §1.5,
-H2). Feature: shutdown without loss.
+H2). Feature: [feature-shutdown-without-loss](../features/feature-shutdown-without-loss.md).
 
 - **The decision and its reason.** Measure it before bounding it. If `close` overruns, the process is
   `SIGKILL`ed with records still in the producer. Every one of them belongs to a request already

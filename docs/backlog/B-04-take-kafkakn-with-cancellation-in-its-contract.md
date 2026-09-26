@@ -5,14 +5,14 @@ status: open
 priority: P0
 size: S
 stage: stage-3-bounded-wait
+epic: feature-publish-over-http
 blocked_by: [B-01]
 ---
 
 # B-04 — take a kafkakn snapshot whose contract says what a cancelled `send` leaves behind
 
 **Blocked outside this repository**, and that is why the item exists. `blocked_by` names only this
-repository's items, and without this item the dependency would be invisible to the index. Feature:
-publish over HTTP.
+repository's items, and without this item the dependency would be invisible to the index. Feature: [feature-publish-over-http](../features/feature-publish-over-http.md).
 
 mostik's deadline answers depend on two kafkakn items, filed in youndie/kafkakn#94:
 

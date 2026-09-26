@@ -5,12 +5,13 @@ status: open
 priority: P0
 size: M
 stage: stage-3-bounded-wait
+epic: feature-publish-over-http
 blocked_by: [B-03, B-04]
 ---
 
 # B-05 — the publish deadline: `429` when provably never queued, `504 outcome-unknown` otherwise
 
-The reason mostik exists. Feature: publish over HTTP.
+The reason mostik exists. Feature: [feature-publish-over-http](../features/feature-publish-over-http.md).
 
 - **The decision and its reason.** The deadline is split in two, following kafkakn B-74 (research §1.4,
   correction):

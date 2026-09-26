@@ -5,6 +5,7 @@ status: open
 priority: P1
 size: S
 stage: stage-4-shutdown
+epic: feature-shutdown-without-loss
 blocked_by: [B-05]
 ---
 
@@ -12,7 +13,7 @@ blocked_by: [B-05]
 
 A request in flight when the drain starts needs up to `PUBLISH_DEADLINE_MS` to get a real answer. A
 drain shorter than that cuts it, and the client sees a reset connection, which is worse than a `504`
-(research §1.6, D6). Feature: shutdown without loss.
+(research §1.6, D6). Feature: [feature-shutdown-without-loss](../features/feature-shutdown-without-loss.md).
 
 - **The decision and its reason.** At start-up, mostik checks that `drain ≥ PUBLISH_DEADLINE_MS + margin`.
   If the check fails, it exits `1` with a message that names both values, the same way kore refuses a

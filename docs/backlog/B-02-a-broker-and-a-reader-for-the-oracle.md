@@ -5,6 +5,7 @@ status: done
 priority: P0
 size: S
 stage: stage-1-skeleton
+epic: feature-publish-over-http
 ---
 
 # B-02 — a broker fixture, and a reader the scenarios use as their oracle
@@ -12,7 +13,7 @@ stage: stage-1-skeleton
 Every scenario in this backlog is decided by reading the topic, not by asking mostik or the producer.
 A producer asked whether it delivered answers yes. That is kafkakn's rule
 (`youndie/kafkakn@2f209b0!/docs/research/research-architecture.md` §2.14), and it is the only way to tell
-whether a `504` record was written. Feature: publish over HTTP.
+whether a `504` record was written. Feature: [feature-publish-over-http](../features/feature-publish-over-http.md).
 
 - **The decision and its reason.** A script starts a single broker in Docker and creates the sample
   topics: `orders` with 3 partitions and `payments` with 1. A second script prints the record at

@@ -5,6 +5,7 @@ status: question
 priority: P2
 size: S
 stage: stage-3-bounded-wait
+epic: feature-publish-over-http
 blocked_by: [B-04]
 ---
 
@@ -12,7 +13,7 @@ blocked_by: [B-04]
 
 `502 broker-rejected` in research D2 promises "not written". Research H3 doubts that a thrown `send`
 always means it: a local message timeout on a record that was in flight may have been persisted.
-Feature: publish over HTTP.
+Feature: [feature-publish-over-http](../features/feature-publish-over-http.md).
 
 - **What has to be read first.** librdkafka's `rd_kafka_message_status` (NOT / POSSIBLY / PERSISTED),
   expected in the bundled 2.13.0 header and not read yet. Then which exceptions of the Java client

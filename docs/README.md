@@ -29,13 +29,11 @@ file each in [`backlog/`](backlog/), cited as [B-01](backlog/B-01-from-template-
 
 ## Read this first
 
-**On `main` there is only research and the backlog, and that is deliberate.** The code on `main` is the
-skeleton B-01 made from keel's template (`youndie/keel@6be238d`): the kore wiring and a producer, and no
-route. A feature document here would describe a route that does not exist, which is intent written down
-as fact. The feature, API and service documents are `draft` on the branch
-**docs/drafts**. They merge when B-03 gives them their code anchors, and each is re-read against the code
-before it goes `active`. The kore wiring the skeleton kept is described by the template's own service
-document, `youndie/keel@6be238d!/docs/services/keel-server.md`; its store sections no longer apply.
+**On this branch the feature, API and service documents are `draft`, and that is what keeps them off
+`main`.** The code on `main` is the skeleton B-01 made from keel's template (`youndie/keel@6be238d`): the
+kore wiring and a producer, and no route. These documents describe that route before it exists. The
+branch merges when B-03 gives them code anchors, each document is re-read against the code before it goes
+`active`, and `docs_check.py --on-main` refuses a `draft` on the default branch.
 
 **What is verified** is [research-architecture](research/research-architecture.md) §1: each fact
 carries an address inside kafkakn, keel, kore or a registry listing, with the date it was read. The
@@ -48,8 +46,8 @@ brief turned out wrong in two places, and both are recorded where they matter:
 
 - **`id`** in the frontmatter is unique and equals the filename.
 - Cross-layer links are ids in the frontmatter and ordinary markdown links in the body. A backlog item
-  names its feature in the text until the feature document is on `main`; the `epic:` field arrives with
-  it, because the checker holds that field to a document that exists.
+  carries its feature as `epic:`, which the checker holds to a document that exists. That is why the
+  field arrives on `main` with the feature documents, and not before.
 - BDD scenarios are **target** behaviour until the code exists, and carry no `**Automated:**` line.
 - Addresses inside another repository or artefact use the separator a jar URL uses:
   `youndie/kafkakn@2f209b0!/docs/api/producer-contract.md`.
@@ -73,3 +71,17 @@ by a person; the machine only guards the membership.
 ### Research (1)
 
 - [x] [research-architecture](research/research-architecture.md) — what kafkakn's `send` does when cancelled, what keel's shutdown already does, the two places the brief was wrong, and the decisions behind the status set
+
+### Services (1)
+
+- [ ] [mostik-server](services/mostik-server.md) — the bridge in two builds: where the deadline lives, the shutdown order with the producer last, the `MOSTIK_` and `KAFKA_` configuration, and three quirks
+
+### Features (2)
+
+- [ ] [feature-publish-over-http](features/feature-publish-over-http.md) — one `POST`, one record, a status that is true about the record; six target scenarios decided by reading the topic
+- [ ] [feature-shutdown-without-loss](features/feature-shutdown-without-loss.md) — `SIGTERM` without making any answer false, and why the drain must outlast the deadline
+
+### API (2)
+
+- [ ] [endpoint-records](api/endpoint-records.md) — `POST /topics/{topic}/records`: how the request becomes a record, the closed status set, and kore's `503`
+- [ ] [endpoint-probes](api/endpoint-probes.md) — kore's probes and `/version` as keel mounts them; readiness does not follow the broker

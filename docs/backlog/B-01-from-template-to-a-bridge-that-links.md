@@ -5,13 +5,14 @@ status: done
 priority: P0
 size: M
 stage: stage-1-skeleton
+epic: feature-publish-over-http
 ---
 
 # B-01 — from keel's template to a bridge that links kafkakn on both builds
 
 The tree is keel's template at `youndie/keel@6be238d`: an `item` feature over SQLite, the package
 `io.github.youndie.keel`, and a project named `keel`. mostik has no database and publishes to Kafka.
-Feature: publish over HTTP.
+Feature: [feature-publish-over-http](../features/feature-publish-over-http.md).
 
 - **The decision and its reason.** Rename to `mostik` (`rootProject.name`, the package, the binary, the
   image), remove the `item` feature and sqlx4k, and depend on `io.github.youndie.kafkakn:kafkakn-core:0.1.0-SNAPSHOT`.
