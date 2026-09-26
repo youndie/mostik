@@ -184,6 +184,7 @@ It only has to show that the published klib resolves and links (§1.8).
 | Fact | Where verified |
 |---|---|
 | `io.github.youndie.kafkakn:kafkakn-core`, only version `0.1.0-SNAPSHOT`, last updated 2026-09-25 06:33 | `https://reposilite.kotlin.website/snapshots/io/github/youndie/kafkakn/kafkakn-core/maven-metadata.xml`, read 2026-09-26 |
+| **Republished 2026-09-26 22:45 UTC** from `fe4f1c4`, as build `0.1.0-20260926.224535-6`. The JVM jar holds `Delivery` and `RecordNotQueuedException` | the same listing, and the jar under `kafkakn-core-jvm/0.1.0-SNAPSHOT/`, read 2026-09-27 |
 | The native klib carries librdkafka and its TLS stack inside, so "a downstream link needs no configuration of its own" | `youndie/kafkakn@2f209b0!/README.md` |
 | That sentence was false once: the suite linked and a stranger's build failed with 14 undefined symbols | `youndie/kafkakn@2f209b0!/docs/backlog/B-15-native-klib-carries-no-c.md` |
 | This tree's `pluginManagement` already names the same repository, filtered to `io.github.youndie.*` | `settings.gradle.kts` |
@@ -342,7 +343,7 @@ settled). This is why mostik bounds step 1 with `max.block.ms` and never with a 
 
 The order is in [backlog.md](../../backlog.md). First the skeleton (B-01, B-02). Then the happy path
 (B-03), which is when the drafted documents on **docs/drafts** get their first code anchors. Then the
-deadline, which depends on kafkakn: B-73 and B-74 are merged (kafkakn `fe4f1c4`), and B-04 waits only for
-the snapshot to be republished. kafkakn does that by hand, through its `publish` workflow. The
+deadline, which depended on kafkakn. B-73 and B-74 are merged (kafkakn `fe4f1c4`) and published
+(2026-09-26 22:45 UTC), so B-04 waits only on B-01. The
 shutdown items come last: B-07 checks the drain budget, B-08 measures `close` with the broker gone, and
 B-09 is the `SIGTERM` oracle.

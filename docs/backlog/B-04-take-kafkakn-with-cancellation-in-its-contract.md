@@ -37,3 +37,13 @@ publication: kafkakn republishes its snapshot by hand, by running its `publish` 
   merged. mostik compiles a call to `enqueue`, `Delivery.await()` and `RecordNotQueuedException` on both
   builds.
 - Anchors: `gradle/libs.versions.toml`.
+
+## Progress (2026-09-27)
+
+- **The first half of the AC is met.** The snapshot was republished by kafkakn's `publish` run of
+  2026-09-26 22:40 UTC, built from `fe4f1c4`, the B-74 merge. `maven-metadata.xml` now says
+  `lastUpdated 20260926224549`, and the build is `0.1.0-20260926.224535-6`, the same for `kafkakn-core-jvm`
+  and `kafkakn-core-linuxx64`. The published JVM jar holds `io/github/youndie/kafkakn/Delivery.class` and
+  `RecordNotQueuedException.class`. This was read from the jar itself, not inferred from the date.
+- **The second half waits on B-01**, which is this item's blocker: mostik does not depend on kafkakn until
+  then, so there is nothing yet to compile a call to `enqueue` against.
