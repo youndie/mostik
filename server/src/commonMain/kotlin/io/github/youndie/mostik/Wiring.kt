@@ -2,6 +2,8 @@ package io.github.youndie.mostik
 
 import io.github.youndie.kafkakn.KafkaProducer
 import io.github.youndie.kafkakn.ProducerConfig
+import io.github.youndie.kafkakn.ProducerRecord
+import io.github.youndie.kafkakn.RecordMetadata
 import io.github.youndie.kafkakn.kafkaProducer
 import io.github.youndie.kore.generated.KoreBuildIdentity
 import io.github.youndie.kore.health.LivenessGate
@@ -15,6 +17,7 @@ import io.github.youndie.kore.lifecycle.AnnounceNotReady
 import io.github.youndie.kore.lifecycle.ShutdownDeadlines
 import io.github.youndie.kore.lifecycle.ShutdownParticipant
 import io.github.youndie.kore.lifecycle.runUntilSignal
+import io.github.youndie.mostik.publish.publishRoutes
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -22,6 +25,7 @@ import io.ktor.server.cio.CIO
 import io.ktor.server.engine.EngineConnectorBuilder
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.routing.routing
 import kotlinx.coroutines.runBlocking
 import kotlin.time.Duration.Companion.seconds
 
@@ -56,7 +60,7 @@ fun startMostik(settings: MostikSettings) {
                 shutdownGracePeriod = deadlines.drain.inWholeMilliseconds
                 shutdownTimeout = deadlines.drain.inWholeMilliseconds + 5_000
             },
-            module = { mostikModule(startup, readiness, liveness) },
+            module = { mostikModule(startup, readiness, liveness, settings) { producer.send(it) } },
         )
 
     // NOT `start(wait = true)`. The main thread has to be free to wait for the signal and then run
@@ -114,14 +118,13 @@ private fun openProducer(settings: MostikSettings): KafkaProducer =
         refuse("the producer refused its configuration: ${refusal.message}")
     }
 
-/**
- * The routes this service serves, plus everything kore mounts. No route of mostik's own until B-03: what
- * serves today is kore's probes and `/version`.
- */
+/** The routes this service serves, plus everything kore mounts. */
 fun Application.mostikModule(
     startup: StartupGate,
     readiness: ReadinessGate,
     liveness: LivenessGate,
+    settings: MostikSettings,
+    send: suspend (ProducerRecord) -> RecordMetadata,
 ) {
     // BEFORE the probes and the routes. An interceptor installed later would let calls through that
     // arrived first, and the one thing this must never miss is the first request after the announce.
@@ -130,4 +133,5 @@ fun Application.mostikModule(
     installKoreVersion(KoreBuildIdentity)
 
     install(ContentNegotiation) { json() }
+    routing { publishRoutes(settings.topics, settings.maxRecordBytes, send) }
 }
