@@ -56,7 +56,7 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-01](docs/backlog/B-01-from-template-to-a-bridge-that-links.md) `[ ]` | From keel's template to a bridge that links kafkakn on both builds | P0 | M | - |
+| [B-01](docs/backlog/B-01-from-template-to-a-bridge-that-links.md) `[~]` | From keel's template to a bridge that links kafkakn on both builds | P0 | M | - |
 | [B-02](docs/backlog/B-02-a-broker-and-a-reader-for-the-oracle.md) `[ ]` | A broker fixture, and a reader the scenarios use as their oracle | P0 | S | - |
 | [B-04](docs/backlog/B-04-take-kafkakn-with-cancellation-in-its-contract.md) `[ ]` | Take a kafkakn snapshot whose contract says what a cancelled send leaves behind | P0 | S | B-01 |
 | [B-05](docs/backlog/B-05-the-deadline-429-or-504.md) `[ ]` | The publish deadline: 429 when provably never queued, 504 outcome-unknown otherwise | P0 | M | B-03, B-04 |

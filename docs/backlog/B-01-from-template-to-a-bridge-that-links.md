@@ -1,7 +1,7 @@
 ---
 id: B-01
 title: "From keel's template to a bridge that links kafkakn on both builds"
-status: open
+status: wip
 priority: P0
 size: M
 stage: stage-1-skeleton
