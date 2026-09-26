@@ -1,0 +1,33 @@
+# The broker every mostik scenario is decided against (B-02).
+#
+# A real broker, pinned to the version kafkakn's own suite runs against (`apache/kafka:4.3.1`,
+# youndie/kafkakn docs/services/test-broker.md), so a difference between the two projects' results is
+# never a difference between their brokers.
+#
+# ITS OWN NAME AND ITS OWN PORT. The Linux box is shared, and kafkakn's fixture is `kafkakn-broker` on
+# 9092. Two fixtures with one name or one port would stop each other's runs.
+
+services:
+  broker:
+    image: apache/kafka:4.3.1
+    container_name: mostik-broker
+    ports:
+      - "19092:19092"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_LISTENERS: "PLAINTEXT://:19092,CONTROLLER://:19093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://127.0.0.1:19092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      # Required, with no default. Without it the broker aborts before it listens, and
+      # `docker compose up --wait` still reports the container Healthy (kafkakn, measured 2026-09-17).
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@127.0.0.1:19093"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      # OFF. mostik's allowlist decides which topics may be written, and a broker that creates any
+      # topic it is asked for would let a scenario pass against a topic nobody made.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
