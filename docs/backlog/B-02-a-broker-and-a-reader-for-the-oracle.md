@@ -1,7 +1,7 @@
 ---
 id: B-02
 title: "A broker fixture, and a reader the scenarios use as their oracle"
-status: open
+status: wip
 priority: P0
 size: S
 stage: stage-1-skeleton
