@@ -79,8 +79,15 @@ Not decided. The image is keel's, renamed.
 
 ## 6. Local setup
 
-*Target, B-02:* the broker from `ci/broker/`, then the service with `MOSTIK_BOOTSTRAP_SERVERS` pointing at
-it. Gradle runs on the Linux box; see `CLAUDE.md`, *Where things build*.
+On the Linux box, which has Docker and runs Gradle (see `CLAUDE.md`, *Where things build*):
+
+1. `ci/broker/broker.sh up` starts `apache/kafka:4.3.1` as `mostik-broker` on `127.0.0.1:19092`, waits until
+   it answers, and creates `orders` (3 partitions) and `payments` (1). `ci/broker/broker.sh selftest` is its
+   acceptance (B-02).
+2. Start the service with `MOSTIK_BOOTSTRAP_SERVERS=127.0.0.1:19092 MOSTIK_TOPICS=orders,payments`.
+3. Read what arrived with `ci/broker/broker.sh at <topic> <partition> <offset>` or `key <topic> <key>`. That is
+   the broker distribution's own consumer, never mostik's producer. Nothing can be read while the broker is
+   `pause`d.
 
 ## 7. Configuration
 
