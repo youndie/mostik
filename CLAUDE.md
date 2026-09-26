@@ -47,8 +47,19 @@ mostik is a product, not a template, so its own code belongs here. What does not
 
 ## The loop merges its own pull requests
 
-*Inherited from keel, and it applies once the repository is on GitHub; until then there is no CI to
-be green.*
+**While the repository is local only (the owner's choice, 2026-09-27), the loop merges locally.** There
+is no remote, no pull request and no CI. An item is handed over like this:
+
+1. one branch per item, `feat/b-<nn>-<slug>`, and the first commit sets the status to `wip`;
+2. the local gate, the same commands CI's jobs run: `LOCAL=1 make check` on the Mac, and
+   `~/.claude/bin/wsl-run make build` on the Linux box, with the test-result XML read rather than the log;
+3. green → rebase on `main`, regenerate the index, `git merge --ff-only` into `main`, delete the branch;
+4. the item's findings record where each check ran, because no pull request body holds it.
+
+A `question` item is never merged into being decided, here as below. The rules below take over the day
+the repository is on GitHub.
+
+*The rules for GitHub, inherited from keel:*
 
 **A `/loop` iteration merges the pull request it opened, once CI is green.** One item, one branch, one
 pull request, merged by the loop — `gh pr merge --rebase --delete-branch`.
