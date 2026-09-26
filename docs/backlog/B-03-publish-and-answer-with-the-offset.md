@@ -1,7 +1,7 @@
 ---
 id: B-03
 title: "POST /topics/{topic}/records answers 200 with the offset the broker gave"
-status: open
+status: wip
 priority: P1
 size: M
 stage: stage-2-publish
