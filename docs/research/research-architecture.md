@@ -186,7 +186,7 @@ It only has to show that the published klib resolves and links (§1.8).
 |---|---|
 | `io.github.youndie.kafkakn:kafkakn-core`, only version `0.1.0-SNAPSHOT`, last updated 2026-09-25 06:33 | `https://reposilite.kotlin.website/snapshots/io/github/youndie/kafkakn/kafkakn-core/maven-metadata.xml`, read 2026-09-26 |
 | **Found at B-01, 2026-09-27: librdkafka connects to the bootstrap servers at construction.** The release binary logged `Connect to ipv4#127.0.0.1:1 failed` within a second of start-up, before any record. kafkakn's contract says `rd_kafka_new` "connects to nothing" | `docs/backlog/B-01-from-template-to-a-bridge-that-links.md`, *Findings*; `youndie/kafkakn@fe4f1c4!/docs/api/producer-contract.md` |
-| **Republished 2026-09-26 22:45 UTC** from `fe4f1c4`, as build `0.1.0-20260926.224535-6`. The JVM jar holds `Delivery` and `RecordNotQueuedException` | the same listing, and the jar under `kafkakn-core-jvm/0.1.0-SNAPSHOT/`, read 2026-09-27 |
+| **Republished 2026-09-26 22:45 UTC** from `fe4f1c4`, as build `0.1.0-20260926.224535-6`. The JVM jar holds `Delivery` and `RecordNotQueuedException` | the same listing, and the published JVM jar beside it in the same repository, read 2026-09-27 |
 | The native klib carries librdkafka and its TLS stack inside, so "a downstream link needs no configuration of its own" | `youndie/kafkakn@2f209b0!/README.md` |
 | That sentence was false once: the suite linked and a stranger's build failed with 14 undefined symbols | `youndie/kafkakn@2f209b0!/docs/backlog/B-15-native-klib-carries-no-c.md` |
 | This tree's `pluginManagement` already names the same repository, filtered to `io.github.youndie.*` | `settings.gradle.kts` |
