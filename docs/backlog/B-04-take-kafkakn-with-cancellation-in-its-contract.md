@@ -1,7 +1,7 @@
 ---
 id: B-04
 title: "Take a kafkakn snapshot whose contract says what a cancelled send leaves behind"
-status: open
+status: wip
 priority: P0
 size: S
 stage: stage-3-bounded-wait
