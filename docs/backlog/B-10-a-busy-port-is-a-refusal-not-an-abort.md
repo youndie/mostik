@@ -47,7 +47,7 @@ because of B-07's harness finding.
 - **The change:** `portProblem(port)` binds `MOSTIK_PORT` once with `ktor-network` and closes it before
   `startMostik`. A failure is `refuse(...)`, the same path every other start-up refusal takes. It narrows the
   problem and does not close it: something else can take the port between the check and the server's bind. The
-  root is Ktor's CIO, and no issue goes to JetBrains from here.
+  root is Ktor's CIO, and it is not reported upstream from here.
 - **AC: exit 1, one sentence naming the port and `MOSTIK_PORT`, no core dump, on both builds.**
   - native: `MOSTIK_PORT (18105) cannot be listened on: EADDRINUSE (98): Address already in use`, exit 1;
   - JVM: `MOSTIK_PORT (18105) cannot be listened on: Address already in use`, exit 1.

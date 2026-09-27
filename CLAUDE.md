@@ -6,18 +6,24 @@ may write it twice. Built from [keel](https://github.com/youndie/keel) (a server
 Kotlin/Native binary and a JVM distribution, one image) and publishing through
 [kafkakn](https://github.com/youndie/kafkakn).
 
-**State (2026-09-27): the route publishes under a deadline.** `POST /topics/{topic}/records` answers `200`
-with the offset the broker gave (B-03), `429` for a record provably never queued, and `504 outcome-unknown`
-when the deadline wins after queueing (B-05). All of it is checked by reading the topic, on both builds.
-kafkakn is pinned at `0.1.0.11` (B-04). The drain budget is checked at start-up (B-07). `close` is cut by kore at 3 s when the broker is gone,
-and the process still exits within its grace period (B-08). Under load, 40 rounds of `SIGTERM` gave zero
-disagreements between clients' ledgers and the topic (B-09). Through the announce both builds go on serving while readiness says `503`, and the refusal opens at the drain
-(kore `0.1.7`, B-14). A busy port is a one-line refusal (B-10). kore `0.1.6` carries both of those fixes, and mostik's
-workarounds are gone (B-13).
-Reset connections at shutdown are the kernel closing an accept
-queue with its listener, in a window already answering `503` (B-11). B-06 decided that every failure after queueing stays `504`: neither arm says whether it was persisted. The repository exists only on this Mac —
-it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
-that its age is visible; `backlog.md` and the build are what cannot go stale.
+**State (2026-09-27): the backlog B-01…B-15 is done, and the repository is on GitHub** as
+[youndie/mostik](https://github.com/youndie/mostik). `POST /topics/{topic}/records` answers `200` with the
+offset the broker gave (B-03), `429` for a record provably never queued, and `504 outcome-unknown` for
+everything after queueing (B-05, B-06). All of it is checked by reading the topic, on both builds.
+
+- kafkakn is pinned at `0.1.0.11` (B-04) and kore at `0.1.7` (B-13, B-14).
+- The drain budget is checked at start-up (B-07). A busy port is a one-line refusal (B-10).
+- Through the announce both builds go on serving while readiness says `503`; the refusal opens at the drain
+  (B-12, B-14).
+- Under load, `SIGTERM` gave zero disagreements between clients' ledgers and the topic, 20 rounds per build
+  (B-09, B-14). Connections reset at shutdown are the kernel closing an accept queue with its listener, in a
+  window already answering `503` (B-11).
+- On the native build Ktor's CIO occasionally loses an answer it was given (B-15). It is accepted, not
+  reported upstream, and reproduced without mostik in
+  [ktor-cio-empty-reply-repro](https://github.com/youndie/ktor-cio-empty-reply-repro).
+
+The Linux box has the repository as the mutagen session `mostik`. This paragraph is dated so that its age is
+visible; `backlog.md` and the build are what cannot go stale.
 
 ## How to start a session
 
@@ -27,8 +33,8 @@ that its age is visible; `backlog.md` and the build are what cannot go stale.
    - **`send` is already cancellable on both arms** (§1.1). `withTimeout` bounds the wait today; the
      question is what the answer means once it has.
    - **A cancelled `send` does not recall a queued record, and the caller cannot tell whether it was
-     queued** (§1.2, §1.3). So an expired deadline is `504 outcome-unknown`, never `503`, and `429` is
-     unreachable until kafkakn B-73/B-74 land (youndie/kafkakn#94) and mostik's B-04 takes them.
+     queued** (§1.2, §1.3). So an expired deadline is `504 outcome-unknown`, never `503`. `429` became
+     reachable with kafkakn B-73/B-74 (youndie/kafkakn#94), which B-04 took.
    - **The drain must outlast the publish deadline** (§1.6), or a request in flight at `SIGTERM` gets a
      reset connection instead of an answer.
 2. [backlog.md](backlog.md) — the goal, the stages, the index. Items are one file each in
@@ -56,19 +62,11 @@ mostik is a product, not a template, so its own code belongs here. What does not
 
 ## The loop merges its own pull requests
 
-**While the repository is local only (the owner's choice, 2026-09-27), the loop merges locally.** There
-is no remote, no pull request and no CI. An item is handed over like this:
+**Until 2026-09-27 the repository was local only, and the loop merged locally** (a branch per item, the local
+gate, `git merge --ff-only`); B-01…B-15 went in that way, and each item's findings say where its checks ran.
+Since it is on GitHub, the rules below apply.
 
-1. one branch per item, `feat/b-<nn>-<slug>`, and the first commit sets the status to `wip`;
-2. the local gate, the same commands CI's jobs run: `LOCAL=1 make check` on the Mac, and
-   `~/.claude/bin/wsl-run make build` on the Linux box, with the test-result XML read rather than the log;
-3. green → rebase on `main`, regenerate the index, `git merge --ff-only` into `main`, delete the branch;
-4. the item's findings record where each check ran, because no pull request body holds it.
-
-A `question` item is never merged into being decided, here as below. The rules below take over the day
-the repository is on GitHub.
-
-*The rules for GitHub, inherited from keel:*
+*The rules, inherited from keel:*
 
 **A `/loop` iteration merges the pull request it opened, once CI is green.** One item, one branch, one
 pull request, merged by the loop — `gh pr merge --rebase --delete-branch`.

@@ -66,12 +66,11 @@ every request without an answer looked up in the topic.
   in 60 000 with the fake. So this is a race, not a fixed fraction.
 - The two temporary patches were never committed, and the tree was checked clean after each.
 
-**The question, for the owner.** mostik cannot fix an engine's internals, and the upstream is Ktor, which is
-JetBrains: by the owner's rule, no LLM-made contribution goes there. So the item cannot meet its second criterion
-alone. The choices:
+**The question, for the owner.** mostik cannot fix an engine's internals, and the upstream is Ktor, where
+reports are filed by the owner. So the item cannot meet its second criterion alone. The choices:
 
 1. **A minimal Ktor-only reproduction first:** a bare CIO server on `linuxX64`, no kore and no kafkakn, under the
-   same curl load. If it reproduces, the owner files it with Ktor himself, with that repro and the numbers above.
+   same curl load. If it reproduces, the owner files it with Ktor, with that repro and the numbers above.
 2. **Accept it and say so:** the endpoint and feature documents already state what a client can meet ("no answer" is
    "unknown", like `504`). A client that retries on no answer can write twice, exactly as on a `504`.
 3. **Prefer the JVM build where it matters,** since it showed none in 746 799. That is a deployment choice, and it
@@ -97,8 +96,8 @@ negotiation. It has one route: read the body, `delay(10)`, `respondText` a small
   is absent here: kore's interceptor, kafkakn's idle producer, content negotiation. The JVM control of the same
   code shows none.
 - The host was Ubuntu 24.04 on WSL2 (kernel 6.6.87.2), glibc 2.39, curl 8.5.0.
-- **The upstream report is drafted for the owner to file**, because Ktor is JetBrains and no LLM-made contribution
-  goes there. The draft carries the reproduction, the load as a copy-paste script (run as written before it was handed over: run 3) and the table above, and it names no project of this portfolio.
+- **The upstream report is drafted for the owner to file.** The draft carries the reproduction, the load
+  as a copy-paste script (run as written before it was handed over: run 3) and the table above.
 - **What stays true in mostik whatever Ktor does:** a client reads "no answer" as "unknown", the same as `504`. The
   endpoint and feature documents already say so.
 
