@@ -1,7 +1,7 @@
 ---
 id: B-08
 title: "How long close takes with the broker gone, measured against the grace period"
-status: open
+status: wip
 priority: P1
 size: S
 stage: stage-4-shutdown
