@@ -45,6 +45,10 @@ Mac. There is no CI.
   spends the whole drain: `DRAIN DEADLINE_EXCEEDED in 6.000457753s` at 6 000 ms, and in `15.000330303s` at the
   default. A configuration line printing `6000ms` would not have shown that.
 - **Suites:** 28 tests on `jvm` and 28 on `linuxX64`, none failed, from fresh result files.
+- **Mutants.** The check disabled: killed by `a drain shorter than the deadline plus its margin is refused and
+  names both keys`. `Wiring` ignoring `drainMs`: **no unit test would catch it.** It is caught only by the
+  measurement above, `DRAIN` taking 6.0 s at 6 000 ms and not 15. That measurement is a manual run, stated as
+  such rather than counted as automated.
 - **Found: a busy port aborts the native build.** A reused port made one run die with exit 134 and
   `Uncaught Kotlin exception` (`EADDRINUSE`), with no one-line refusal. Reproduced on purpose. Filed as
   [B-10](B-10-a-busy-port-is-a-refusal-not-an-abort.md), not fixed here.
