@@ -81,7 +81,7 @@ distribution runs the official Java client. Neither build carries code of its ow
 | Kind | Name | What for |
 |---|---|---|
 | Library | `io.github.youndie.kafkakn:kafkakn-core:0.1.0-SNAPSHOT` | the producer, both arms (research §1.8) |
-| Library | kore `0.1.4` (`kore-core`, `kore-ktor`) | configuration, probes, `/version`, the shutdown sequence |
+| Library | kore `0.1.6` (`kore-core`, `kore-ktor`) | configuration, probes, `/version`, the shutdown sequence |
 | External | Kafka | the only thing written to |
 | In front | a reverse proxy | authentication, TLS; its upstream timeout must exceed the deadline (research, risk 1) |
 
@@ -132,13 +132,18 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
   (`ci/b-05/run.sh`).
 - **Ktor's JVM shutdown hook is switched off, and has to be.** Ktor's `EmbeddedServer.start` registers a JVM
   shutdown hook that stops the engine, and the JVM runs it at the same moment as kore's, so the JVM build used to
-  stop listening 1 ms after `SIGTERM`. `keepKtorOutOfTheShutdown()` (server `jvmMain`) sets
-  `io.ktor.server.engine.ShutdownHook=false` as the first line of every JVM `main`. It is a workaround with an
-  address, youndie/kore#90, reproduced on keel itself (B-12).
+  stop listening 1 ms after `SIGTERM` (B-12). The server starts with kore's `startForKore()`, which switches the
+  hook off first (kore#90, kore `0.1.6`, B-13). mostik's own switch, `keepKtorOutOfTheShutdown()`, is gone.
 - **A busy port is checked before the server binds it.** CIO binds inside a coroutine of its own, and on
-  Kotlin/Native an exception there aborts the process with `SIGABRT`. mostik binds `MOSTIK_PORT` once itself and
-  closes it, so a busy port is one sentence and exit 1 on both builds. Another process can still take the port in
-  the moment between, so this narrows the problem and does not close it (B-10, youndie/keel#49).
+  Kotlin/Native an exception there aborts the process with `SIGABRT`. kore's `requireListenable(MOSTIK_PORT)`
+  binds the port once before the server does and refuses like a missing variable, so a busy port is one sentence
+  and exit 1 on both builds (B-10, keel#49; kore's since `0.1.6`, B-13). Another process can still take the port
+  in the moment between, so this narrows the problem and does not close it.
+- **`SO_REUSEADDR` is on, for the engine and the check alike (`REUSE_ADDRESS`).** Without it, native refused to
+  restart over its own TIME_WAIT (3 of 3, after 20 requests with `Connection: close`), while the JVM, whose NIO
+  sets the flag itself, restarted (`ci/b-13/run.sh`). A port another process *listens* on is still refused
+  (`ci/b-10/run.sh`). The check and the engine take one constant, because a check stricter than the engine refuses
+  a start that would work.
 - **A connection that arrives as the listener closes is reset.** At the end of the announce, the drain closes the
   listening socket, and the kernel resets whatever is still in its accept queue. Measured: every reset within
   ±43 ms of the close, in the window already answering `503`, and no record behind any. It is not a layer's

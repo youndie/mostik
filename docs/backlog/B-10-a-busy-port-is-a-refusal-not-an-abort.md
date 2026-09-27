@@ -61,3 +61,10 @@ because of B-07's harness finding.
 - **Found by the linter on the way:** the first version caught `Exception` around the bind, which would have
   swallowed a `CancellationException`. The portfolio's ktlint rule refused it, and the catch now rethrows
   cancellation first.
+
+## Amended (2026-09-27, B-13)
+
+`portProblem()` is gone. kore `0.1.6` has the same check as `Configuration.requireListenable(port)`, and it closes
+the probe socket per platform: on native, `ktor-network`'s `close()` only queues the close for the selector thread,
+which `portProblem()` did not account for (kore #93). mostik calls kore's check with `reuseAddress = REUSE_ADDRESS`,
+and `ci/b-10/run.sh` passes on both builds as before.

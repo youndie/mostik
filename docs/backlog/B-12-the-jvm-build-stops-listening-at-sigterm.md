@@ -62,3 +62,8 @@ connection is a request that was never sent.
   when kore does it.
 - **Not measured here:** whether this also removes the JVM's share of B-11's reset connections. The JVM rounds had
   more resets than native, and an engine stopped mid-request is one way to get them. That is for B-11 to measure.
+
+## Amended (2026-09-27, B-13)
+
+The workaround is gone. kore `0.1.6` switches Ktor's JVM hook off in `startForKore()` (kore #92, closing kore#90),
+and mostik starts the server with it. `ci/b-12/run.sh` passes on both builds as before.

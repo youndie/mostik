@@ -358,8 +358,9 @@ Two things §1.5 and §1.6 did not predict:
 - the JVM build closing its listener at the signal, so kore's announce is invisible there (B-12). **Cause read and
   fixed:** Ktor 3.6.0's `EmbeddedServerJvm.start` registers `addShutdownHook { stop() }`, which the JVM runs
   concurrently with kore's (`ktor-server-core-jvm-3.6.0-sources.jar!/jvmMain/io/ktor/server/engine/EmbeddedServerJvm.kt`).
-  kore's research has the fact, but its consequence reasons only about Native. mostik switches the hook off by
-  system property until kore does (youndie/kore#90).
+  kore's research has the fact, but its consequence reasons only about Native. mostik switched the hook off by
+  system property until kore did (youndie/kore#90). kore `0.1.6` does it in `startForKore()`, and mostik takes that
+  since B-13.
 
 The first is against the feature's promise. The second is a difference between the builds, and neither makes an
 answer false.

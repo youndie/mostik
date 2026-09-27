@@ -13,6 +13,7 @@ import io.github.youndie.kore.ktor.EngineDrain
 import io.github.youndie.kore.ktor.installKoreProbes
 import io.github.youndie.kore.ktor.installKoreVersion
 import io.github.youndie.kore.ktor.installShutdownRefusal
+import io.github.youndie.kore.ktor.startForKore
 import io.github.youndie.kore.lifecycle.AnnounceNotReady
 import io.github.youndie.kore.lifecycle.ShutdownDeadlines
 import io.github.youndie.kore.lifecycle.ShutdownParticipant
@@ -62,13 +63,16 @@ fun startMostik(settings: MostikSettings) {
                 // than a great many real requests. The engine still needs them explicitly.
                 shutdownGracePeriod = deadlines.drain.inWholeMilliseconds
                 shutdownTimeout = deadlines.drain.inWholeMilliseconds + 5_000
+                reuseAddress = REUSE_ADDRESS
             },
             module = { mostikModule(startup, readiness, liveness, settings) { producer.enqueue(it) } },
         )
 
     // NOT `start(wait = true)`. The main thread has to be free to wait for the signal and then run
     // the sequence — which is the whole reason kore does not go through `addShutdownHook`.
-    server.start(wait = false)
+    // `startForKore` is `start(wait = false)` with Ktor's own JVM shutdown hook switched off first: the JVM runs that
+    // hook beside kore's, and it stopped the engine mid-announce (B-12, kore#90; kore's since 0.1.6, B-13).
+    server.startForKore()
     startup.markStarted()
 
     runBlocking {
@@ -155,3 +159,17 @@ fun Application.mostikModule(
  * measures the drain, and a number derived from nothing would look like a measurement (research, open question 2).
  */
 internal fun retryAfterSeconds(queueWaitMs: Int): Int = maxOf(1, (queueWaitMs + 999) / 1_000)
+
+/**
+ * `SO_REUSEADDR` on the listening socket, for the engine and for the start-up's port check alike.
+ *
+ * **On, because native refused to restart over its own TIME_WAIT.** After 20 requests with `Connection: close`,
+ * a restart on the same port was refused on native three times out of three and served on the JVM three times
+ * out of three (`ci/b-13/run.sh`, B-13). CIO applies `reuseAddress = false` literally on Kotlin/Native, while the
+ * JVM's NIO sets `SO_REUSEADDR` itself; keel found the same (`youndie/keel@e6a12eb`). A port another process is
+ * *listening* on is still refused: `ci/b-10/run.sh`.
+ *
+ * One constant, because the check and the engine must bind the same way. A check stricter than the engine refuses
+ * a start that would have worked; a looser one lets through a start that aborts.
+ */
+internal const val REUSE_ADDRESS: Boolean = true

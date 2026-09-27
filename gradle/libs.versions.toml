@@ -29,7 +29,7 @@ serialization = "1.11.0"
 # The process lifecycle: the ordered shutdown, the three probes, the typed configuration, /version.
 # On the portfolio's repository and NOT on Maven Central, which is what the README's reposilite block
 # is for and what the "stranger test" waits on.
-kore = "0.1.4"
+kore = "0.1.6"
 
 # The size gate `sborka.binaryBudget` is enforced by. Applied by `:server` rather than carried by the
 # convention — sborka's own comment says why.
@@ -54,9 +54,6 @@ kore-ktor = { module = "io.github.youndie:kore-ktor", version.ref = "kore" }
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
 ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
 
-# Named for one use: binding MOSTIK_PORT once before the server does, so a busy port is a refusal and not an
-# abort (B-10). It is already on the classpath through CIO; declared so the code that imports it says so.
-ktor-network = { module = "io.ktor:ktor-network", version.ref = "ktor" }
 ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 

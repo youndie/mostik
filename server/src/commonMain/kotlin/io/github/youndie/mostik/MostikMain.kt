@@ -3,10 +3,7 @@ package io.github.youndie.mostik
 import io.github.youndie.kore.config.ConfigurationException
 import io.github.youndie.kore.config.printConfig
 import io.github.youndie.kore.config.systemEnvironment
-import io.ktor.network.selector.SelectorManager
-import io.ktor.network.sockets.aSocket
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.runBlocking
+import io.github.youndie.kore.ktor.requireListenable
 
 /**
  * Everything both entry points do, so the two `main`s stay the one line that genuinely differs.
@@ -31,7 +28,11 @@ fun mostikMain(args: Array<String>) {
     val environment = systemEnvironment()
     val configuration =
         try {
-            MostikConfig.SCHEMA.read(environment)
+            // A busy port is refused here like a missing variable, not aborted on by CIO later (B-10, keel#49;
+            // kore's own check since 0.1.6, B-13).
+            MostikConfig.SCHEMA.read(environment).also {
+                it.requireListenable(MostikConfig.PORT, reuseAddress = REUSE_ADDRESS)
+            }
         } catch (refusal: ConfigurationException) {
             refuse(refusal.message)
         }
@@ -39,32 +40,8 @@ fun mostikMain(args: Array<String>) {
     val settings = MostikSettings.from(configuration, producerKeys).getOrElse { refuse(it.message) }
 
     println(settings.describe())
-    portProblem(settings.port)?.let { refuse(it) }
     startMostik(settings)
 }
-
-/**
- * Why [port] cannot be listened on, or `null` when it can.
- *
- * mostik binds the port once itself, and closes it, before the server does, because a busy port was not a refusal
- * (B-10). The native build aborted: CIO binds inside a coroutine of its own, and an exception there has no handler
- * on Kotlin/Native, so the process died with `SIGABRT` and 59 lines of stack. The JVM build exited 1, with 18.
- * Neither said `MOSTIK_PORT`.
- *
- * Something else can take the port in the moment between this check and the server's own bind. This makes the
- * common case a sentence; it does not make the race impossible, and the address the fix belongs to is Ktor's CIO.
- */
-internal fun portProblem(port: Int): String? =
-    runBlocking {
-        try {
-            SelectorManager().use { selector -> aSocket(selector).tcp().bind("0.0.0.0", port).close() }
-            null
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (failure: Exception) {
-            "MOSTIK_PORT ($port) cannot be listened on: ${failure.message}"
-        }
-    }
 
 /** Prints the reason, and nothing else, and ends the process — rule 3 above. */
 internal fun refuse(message: String?): Nothing {

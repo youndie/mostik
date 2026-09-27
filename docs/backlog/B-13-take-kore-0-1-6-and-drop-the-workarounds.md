@@ -1,7 +1,7 @@
 ---
 id: B-13
 title: "Take kore 0.1.6 and replace both local workarounds with kore's fixes"
-status: wip
+status: done
 priority: P1
 size: S
 stage: stage-5-kore-upstream
@@ -44,3 +44,33 @@ pins kore `0.1.4` and carries its own workarounds. Feature:
 - Anchors: `gradle/libs.versions.toml`, `server/src/commonMain/kotlin/io/github/youndie/mostik/MostikMain.kt`,
   `server/src/commonMain/kotlin/io/github/youndie/mostik/Wiring.kt`,
   `server/src/jvmMain/kotlin/io/github/youndie/mostik/Main.kt`.
+
+## Findings (2026-09-27)
+
+Everything ran on the Linux box; the gate ran on the Mac.
+
+- **AC: kore `0.1.6` pinned, both workarounds gone.** `startForKore()` in `Wiring.kt`,
+  `requireListenable(MostikConfig.PORT, reuseAddress = REUSE_ADDRESS)` in `mostikMain`. `keepKtorOutOfTheShutdown`,
+  `portProblem`, `PortProblemTest` and the `ktor-network` line are removed: +11 −98 lines before the flag below.
+  The build is green, with 28 tests per build and none failing. The count is two fewer than before, because
+  kore's test replaces `PortProblemTest`.
+- **AC: `ci/b-10/run.sh`, `ci/b-12/run.sh` and `ci/b-03/run.sh` pass on both builds**, before and after the flag.
+- **AC: a native restart on the same port right after a shutdown under load, measured.** The new `ci/b-13/run.sh`
+  sends 20 publishes with `Connection: close`, so there are 20 connections in TIME_WAIT, then `SIGTERM`, then the
+  restart:
+
+  | | without `SO_REUSEADDR` | with `REUSE_ADDRESS = true` |
+  |---|---|---|
+  | native | refused, 3 of 3: `MOSTIK_PORT: 18106 cannot be listened on: bind: Address already in use (errno 98)` | ready, 3 of 3 |
+  | JVM | ready, 3 of 3 | ready |
+
+  This is the same as keel's `e6a12eb`: native CIO applies `reuseAddress = false` literally, and the JVM's NIO sets
+  it itself. The engine and kore's check now take one constant. The column without the flag is the positive
+  control of the column with it.
+- **The first version of `ci/b-13/run.sh` measured the wrong thing.** It started the service in `$(...)`, so `wait`
+  could not reach the process, and the restart raced the old process for its port. Both builds "failed". The
+  script now starts the service in its own shell, waits for the process to be gone, and checks that nothing
+  listens before the restart.
+- **Was the restart problem there before B-13?** Very likely: `portProblem()` bound without `SO_REUSEADDR` too, and
+  CIO did as well. B-09's rounds reused one port without showing it, because curl closes its side first when the
+  server does not ask for `Connection: close`. That is inferred, not measured.
