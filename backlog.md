@@ -57,7 +57,7 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-04](docs/backlog/B-04-take-kafkakn-with-cancellation-in-its-contract.md) `[ ]` | Take a kafkakn snapshot whose contract says what a cancelled send leaves behind | P0 | S | B-01 |
+| [B-04](docs/backlog/B-04-take-kafkakn-with-cancellation-in-its-contract.md) `[~]` | Take a kafkakn snapshot whose contract says what a cancelled send leaves behind | P0 | S | B-01 |
 | [B-05](docs/backlog/B-05-the-deadline-429-or-504.md) `[ ]` | The publish deadline: 429 when provably never queued, 504 outcome-unknown otherwise | P0 | M | B-03, B-04 |
 | [B-07](docs/backlog/B-07-refuse-a-drain-shorter-than-the-deadline.md) `[ ]` | Refuse to start when the drain budget is shorter than the publish deadline | P1 | S | B-05 |
 | [B-08](docs/backlog/B-08-close-with-the-broker-gone.md) `[ ]` | How long close takes with the broker gone, measured against the grace period | P1 | S | B-05 |
