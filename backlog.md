@@ -59,7 +59,7 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-15](docs/backlog/B-15-an-empty-reply-for-a-written-record.md) `[?]` | A native publish whose record was written got an empty reply | P1 | M | - |
+| [B-15](docs/backlog/B-15-an-empty-reply-for-a-written-record.md) `[~]` | A native publish whose record was written got an empty reply | P1 | M | - |
 
 ## Closed (14)
 

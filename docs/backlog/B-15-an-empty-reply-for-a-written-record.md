@@ -1,7 +1,7 @@
 ---
 id: B-15
 title: "A native publish whose record was written got an empty reply"
-status: question
+status: wip
 priority: P1
 size: M
 stage: stage-4-shutdown
