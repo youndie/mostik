@@ -1,7 +1,7 @@
 ---
 id: B-09
 title: "The SIGTERM oracle: every answer a client got agrees with the topic"
-status: open
+status: wip
 priority: P1
 size: M
 stage: stage-4-shutdown

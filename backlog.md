@@ -54,7 +54,7 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-09](docs/backlog/B-09-the-sigterm-oracle.md) `[ ]` | The SIGTERM oracle: every answer a client got agrees with the topic | P1 | M | B-07, B-08 |
+| [B-09](docs/backlog/B-09-the-sigterm-oracle.md) `[~]` | The SIGTERM oracle: every answer a client got agrees with the topic | P1 | M | B-07, B-08 |
 | [B-06](docs/backlog/B-06-does-a-thrown-send-mean-not-written.md) `[?]` | Does a thrown send mean the record was not written? | P2 | S | B-04 |
 | [B-10](docs/backlog/B-10-a-busy-port-is-a-refusal-not-an-abort.md) `[ ]` | A busy port stops the start-up with a sentence, not an abort | P2 | S | - |
 
