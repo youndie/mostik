@@ -328,6 +328,18 @@ measurement it names: both builds, a service shutting down, several runs. Settle
 by B-08. If it holds, the process is `SIGKILL`ed with records still in the producer. Every one of them
 belongs to a request that was already answered `504`, so no answer becomes false. What changes is only
 how the process ends. A bound on `close` would then go to kafkakn.
+**Settled 2026-09-27 (B-08): refuted, because kore bounds it first.** kore gives the release stage 3 s, cancels a
+participant still running, and exits without it
+(`youndie/kore@47825a6!/kore-core/src/commonMain/kotlin/io/github/youndie/kore/lifecycle/ShutdownSequence.kt`).
+With the broker stopped and five records queued, the native build exited 8.06 to 8.09 s after `SIGTERM` in three
+rounds, logging `RELEASE_POOLS DEADLINE_EXCEEDED`. None of the five records reached the topic, and each had been
+answered `504`. No `SIGKILL`, and no kafkakn item is needed.
+
+**Found by the same run: with the broker stopped, the arms disagree on whether a record is queued.** The topic's
+metadata was known from an earlier publish. The JVM build answered `429` five times out of five, and the native
+build `504` five times out of five. Both are true answers under kafkakn's contract, which does not promise the arms
+agree when the broker is unreachable. They are still two answers to one situation, the thing B-76 removed for
+missing metadata. Whether this one goes to kafkakn is the owner's call.
 
 **H3. A thrown `send` does not always mean "not written".** A local message timeout on a record that was
 in flight may have been persisted. librdkafka's `rd_kafka_message_status` (NOT / POSSIBLY / PERSISTED)

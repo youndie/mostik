@@ -13,7 +13,7 @@ publishes: [container image with the native binary and the JVM distribution]
 # mostik server
 
 > Read against the code on 2026-09-27 (B-03). What is not built yet is marked *target* with the item that
-> builds it; the shutdown under load (B-08, B-09) is the largest of those.
+> builds it; the shutdown under load (B-09) is the largest of those.
 
 ## 1. Responsibility
 
@@ -134,6 +134,8 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 - **The AOT cache is trained on `/version` only.** Training runs with no broker, so a publish in its workload
   would wait out `max.block.ms` and teach the cache the refusal path. The publishing path is therefore not in
   the cache.
-- **A `504` record may still be in the producer when the process exits.** `close` flushes it, so it can
-  be written after the client was told "unknown". That is consistent with "unknown". How long `close`
-  takes with the broker gone is B-08.
+- **`close` gets 3 s, and then the process exits without it.** kore gives each release stage `releaseGroup`
+  (3 s by default), cancels a participant still running at the deadline, and does not wait for it. With the broker
+  stopped and five records queued, the native build logged `RELEASE_POOLS DEADLINE_EXCEEDED in 3.0s` and exited
+  8.1 s after `SIGTERM`: announce 5 s, drain, release 3 s. The five records never reached the topic. Each was a
+  `504`, so no answer became false; the transcript names the cut (B-08).

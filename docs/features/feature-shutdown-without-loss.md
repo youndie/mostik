@@ -33,8 +33,11 @@ is new here is that the drain has to outlast the publish deadline.
   never a reset connection.
 * `MOSTIK_DRAIN_MS ≥ MOSTIK_PUBLISH_DEADLINE_MS + 1 000 ms`, or the service refuses to start and names both
   values (research D6, B-07).
-* *Target, B-08:* `close` ends within the grace period, or how long it takes is measured and routed to
-  kafkakn. **Seen on native in B-04: 300 200 ms** for one record queued against an unreachable broker.
+* The process ends within the grace period even when `close` cannot finish. kore cuts the release stage at
+  3 s. With the broker stopped and records queued, measured three times per build: 8.06 to 8.09 s on native
+  (`RELEASE_POOLS DEADLINE_EXCEEDED`, exit 0) and 5.05 to 5.12 s on the JVM (nothing was queued, exit 143),
+  against a 30 s grace period (B-08). The 300 s `close` seen in B-04 is what `close` alone takes; the process
+  does not wait for it.
 
 ## 3. Flow
 
@@ -60,7 +63,7 @@ The oracle for the scenarios below is B-09's client-side ledger read against the
 
 ## 5. Scenarios (BDD / test cases)
 
-The first two are *target*: B-09 runs them. The third is built (B-07).
+The first is *target*: B-09 runs it. The second was measured by B-08 and the third is built (B-07).
 
 ### Scenario: the drain covers the deadline
 * **Given:** 64 concurrent publishers, each keeping a ledger of key → status, and a broker that is up
@@ -68,11 +71,16 @@ The first two are *target*: B-09 runs them. The third is built (B-07).
 * **Then:** every client got a status
 * **And:** every `200` is in the topic, and no `429` or `503` is; the `504`s are counted both ways
 
-### Scenario: broker gone at shutdown
+### Scenario: broker gone at shutdown (built; measured, not automated)
 * **Given:** the broker is stopped and requests are in flight
 * **When:** `SIGTERM` lands
-* **Then:** in-flight requests end as `504`
-* **And:** the process ends itself within the grace period, or the time is recorded in B-08
+* **Then:** in-flight requests end as `504` on native and `429` on the JVM (see the publish feature's quirks)
+* **And:** the process ends itself within the grace period: 8.1 s (native) and 5.1 s (JVM)
+* **And:** the records queued for the `504`s are not in the topic after the broker is back: dropped with the
+  process, not flushed
+* *Measured by hand with `ci/b-08/run.sh native|jvm`, three rounds each, 2026-09-27. The requests had their
+  `504` before the signal, since the 5 s announce outlasts the 3 s deadline, so "in flight" means records in
+  the producer, not open requests.*
 
 ### Scenario: misconfigured budget
 * **Given:** `MOSTIK_DRAIN_MS=3000` and `MOSTIK_PUBLISH_DEADLINE_MS=5000`

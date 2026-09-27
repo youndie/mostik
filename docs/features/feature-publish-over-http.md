@@ -126,5 +126,10 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 * Record headers arrive grouped by name, not in the order they were sent (endpoint-records, measured).
 * `429` comes from `enqueue` throwing, never from a cut wait. A timeout around `enqueue` would answer
   `429` for a record that lands on the JVM (kafkakn B-73, research §1.3).
-* A `504` record can be written after the client was told "unknown", even during shutdown: `close`
-  flushes it. That is what "unknown" means.
+* A `504` record can be written after the client was told "unknown", when the broker answers later. At
+  shutdown `close` gets 3 s (kore's `releaseGroup`), and a record still unacknowledged then is dropped with the
+  process (B-08). Either way the client was told the truth: nobody knew.
+* **With the broker stopped, not paused, the two builds answer differently.** The topic's metadata was known
+  from an earlier publish: the JVM build answered `429` (not queued) five times out of five, and the native
+  build `504` (queued) five times out of five (B-08). Both answers are true. They are not the same, and B-05's
+  "same status on both builds" was checked for a paused broker and a full queue only.
