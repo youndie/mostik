@@ -1,7 +1,7 @@
 ---
 id: B-04
 title: "Take a kafkakn snapshot whose contract says what a cancelled send leaves behind"
-status: wip
+status: done
 priority: P0
 size: S
 stage: stage-3-bounded-wait
@@ -107,3 +107,23 @@ changelog or commit.
 
 The acceptance then adds one line to the two above: the test that found the gap (`enqueue` with no metadata
 within `max.block.ms` throws `RecordNotQueuedException`) runs green on both builds and is kept.
+
+## Findings (2026-09-27, iteration 2)
+
+Where each check ran: the build and both suites on the Linux box; the documentation gate on the Mac. The wait
+for kafkakn was a watcher that read GitHub only (`gh api`, no local checkout). It fired when B-76 read `done` on
+kafkakn's `main` and a successful `publish` run had been built from a commit containing it.
+
+- **AC: the published version is after kafkakn B-74, and mostik compiles `enqueue`, `Delivery.await()` and
+  `RecordNotQueuedException` on both builds.** Pinned `kafkakn = "0.1.0.11"`. That run's log names `0.1.0.11`,
+  and it was built from kafkakn `84008f4`, the commit that closed B-76. Gradle resolved `0.1.0.11` fresh on the
+  Linux box (a number, not a cached snapshot). `EnqueueContractTest` calls all three.
+- **AC added by the decision: the test that found the gap is kept and green on both builds.**
+  `EnqueueContractTest` passes on `jvm` and `linuxX64`: `enqueue` refuses after at least `max.block.ms`, and
+  `close` then takes under 5 s. 20 tests on each build, none failed.
+- **Positive control: the test tells the versions apart.** Pinned to `0.1.0.10` (after B-74, before B-76), the
+  native run failed with *"Expected an exception of … RecordNotQueuedException to be thrown, but was
+  kotlinx.coroutines…"*, and the JVM run passed. Back to `0.1.0.11`, both pass.
+- **A reporting quirk:** the native test-result XML gave this test `time="0.003"`, although the test asserts
+  that the refusal took at least 1 000 ms. The native XML's time is not a measurement. The assertion and the
+  control are the evidence.

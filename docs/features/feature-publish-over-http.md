@@ -108,8 +108,8 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 * **When:** every scenario above runs on each
 * **Then:** each gives the same status on both, or this document names the difference per build
 * *Checked for acknowledged, 404 and 413 by `ci/b-03/run.sh` on both builds, 2026-09-27. The two B-05
-  scenarios wait for kafkakn B-76: until then native would answer `504` where the JVM answers `429` when a
-  topic's metadata is missing (B-04).*
+  scenarios wait for the deadline. With kafkakn `0.1.0.11` (B-04), both arms refuse a record whose topic has no
+  metadata, so they will answer alike there too.*
 
 ## 6. Out of scope
 

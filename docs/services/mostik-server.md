@@ -113,8 +113,9 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 - **The `503` during shutdown is not mostik's.** kore's refusal answers `503` with the text
   `shutting down\n` and `Connection: close`, before any mostik code runs. It is the one error without
   mostik's JSON body (research §1.6, consequence 3).
-- **`429` waits for a kafkakn version with B-76** (B-04). Until native `enqueue` refuses a record whose topic
-  has no metadata, the two builds would answer that case differently.
+- **The kafkakn version is pinned, and the pin is load-bearing.** `0.1.0.11` is the first version in which native
+  `enqueue` refuses a record whose topic has no metadata (kafkakn B-76). `EnqueueContractTest` fails on native
+  against `0.1.0.10`, so a pin moved back is caught by the suite (B-04).
 - *Target, B-05:* **`max.block.ms` is mostik's, not the operator's.** A `KAFKA_MAX_BLOCK_MS` will stop the
   start-up, because the queue wait has one source, `MOSTIK_QUEUE_WAIT_MS`. Today `KAFKA_MAX_BLOCK_MS` passes
   through like any other key.

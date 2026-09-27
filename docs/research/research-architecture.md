@@ -110,8 +110,11 @@ address nobody listens on and `max.block.ms` 1 000, the JVM arm's `enqueue` thre
 1 070 ms. The native arm's `enqueue` returned a `Delivery` at 0 ms: the record was queued with no metadata, and
 `close()` then waited 300 200 ms, which is `message.timeout.ms`. B-74 had measured only the queue-full half.
 Where metadata is missing, the two builds give different true answers (`429` and `504`). **The owner chose to
-fix native in kafkakn** (B-76, youndie/kafkakn#98). Until a kafkakn version carrying it is pinned (B-04), the
-native build would answer `504` in this case.
+fix native in kafkakn** (B-76, youndie/kafkakn#98). **Settled 2026-09-27:** kafkakn `0.1.0.11` carries B-76
+and is pinned (B-04). With no metadata within `max.block.ms`, both arms now refuse in `enqueue`. kafkakn
+measured 1 025 ms on the JVM and 1 003 ms on native, and `close` took 7 ms and 0 ms
+(`youndie/kafkakn@84008f4!/docs/backlog/B-76-enqueue-without-metadata.md`). mostik's `EnqueueContractTest` holds
+this on both builds, and fails on native against `0.1.0.10`, the version before.
 
 ### 1.4 No library-side bound is portable, so the deadline lives in mostik
 
@@ -346,7 +349,7 @@ the queue drains?
 both builds answer `504` for every expiry, or does each build answer what it can? **Moot, 2026-09-27:** B-74
 tells the two apart on both arms (§1.3, settled). **Reopened in part, 2026-09-27:** when the topic's metadata is
 missing, native queues where the JVM refuses (§1.3, refuted in part). The owner chose to fix it in kafkakn
-(B-76), so the answer returns to "both builds, one status" once B-04 takes that version.
+(B-76), and B-04 pinned `0.1.0.11`, which carries it: "both builds, one status" holds again.
 
 **Open question 4 (kafkakn B-73).** Does the JVM arm have a clean cancellation moment at all (§1.3,
 consequence 2)? **Answered, 2026-09-27: no.** The JVM caller is back only when the client lets go (§1.3,

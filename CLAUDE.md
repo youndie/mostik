@@ -8,7 +8,8 @@ Kotlin/Native binary and a JVM distribution, one image) and publishing through
 
 **State (2026-09-27): the route publishes, with no deadline yet.** `POST /topics/{topic}/records` answers
 `200` with the offset the broker gave, checked by reading the topic on both builds (B-03). `send` is still
-unbounded; the deadline is B-05, which waits on kafkakn B-76 (B-04). The repository exists only on this Mac —
+unbounded; the deadline is B-05. kafkakn is pinned at `0.1.0.11`, the first version whose native `enqueue`
+refuses a record with no topic metadata, as the JVM's does (B-04). The repository exists only on this Mac —
 it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 
