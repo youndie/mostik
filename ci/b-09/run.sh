@@ -13,8 +13,9 @@
 #   504s are counted both ways                         present or absent, both are true
 #   the process ended itself (exit code is not 137)
 # Reported beside the verdict, not part of it: reset connections (curl 52 or 56), requests that got no answer at
-# all. The feature promises there are none; B-09 found some, none of whose records reached the topic, and B-11 is
-# where they are dealt with. The run of 2026-09-27 still counted them as failures; its verdicts are in the item.
+# all. B-11 measured them: connections in the listener's accept queue when the drain closes it, in the window that
+# answers 503 anyway, and none with a record. The run of 2026-09-27 counted them as failures; its verdicts are in
+# the B-09 item.
 # curl 7 (connection refused) is a request that was never sent: the listener had closed. It is counted, not judged.
 #
 # With "control" as the third argument the broker is stopped 1 s before the signal: the ledger has to move (504s
@@ -38,13 +39,16 @@ WORK=$(mktemp -d /tmp/mostik-b09-XXXX)
 failed=0
 
 client() { # topic prefix ledger
-    local n=0 out
+    local n=0 out rc t0
     while :; do
         n=$((n + 1))
+        t0=$(date +%s%3N)
         out=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 -X POST "$URL/topics/$1/records" \
             -H "Record-Key: $2-$n" --data-binary "v$n")
-        echo "$2-$n $out $?" >> "$3"
-        [ "$(tail -c 3 "$3" | tr -d '\n ')" = 7 ] && break   # refused: the listener is gone, nothing more to send
+        rc=$?
+        # key, status, curl's exit code, and when the request started and ended (epoch ms): B-11 reads the times.
+        echo "$2-$n $out $rc $t0 $(date +%s%3N)" >> "$3"
+        [ "$rc" = 7 ] && break   # refused: the listener is gone, nothing more to send
         sleep 0.02
     done
 }
@@ -70,6 +74,7 @@ for round in $(seq 1 "$ROUNDS"); do
     delay_ms=$(( 3000 + RANDOM % 5000 ))
     sleep "$(echo "scale=3; $delay_ms / 1000" | bc)"
     if [ -n "$CONTROL" ]; then docker stop -t 1 mostik-broker > /dev/null; sleep 1; fi
+    echo "$(date +%s%3N)" > "$WORK/signal-$round"
     kill -TERM "$pid"
     for _ in $(seq 1 900); do kill -0 "$pid" 2> /dev/null || break; sleep 0.1; done
     if kill -0 "$pid" 2> /dev/null; then kill -KILL "$pid"; fi

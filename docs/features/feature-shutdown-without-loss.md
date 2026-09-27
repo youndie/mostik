@@ -32,8 +32,13 @@ is new here is that the drain has to outlast the publish deadline.
   announce and refuse connections only after it (`ci/b-12/run.sh`). The JVM build does so since B-12 switched off
   Ktor's own JVM shutdown hook; before that, it refused from 1 ms after the signal.
 * A request in flight when the signal lands gets a real answer (`200`, `429` or `504`), and every answer is
-  true: in B-09 no `200` was missing, and no `429` or `503` was present. **Not yet: "never a reset
-  connection."** 1 to 9 requests per round got a reset, none of whose records reached the topic (B-11).
+  true: in B-09 no `200` was missing, and no `429` or `503` was present.
+* **A reset connection is possible at one moment, and it costs nothing but its form.** A connection that arrives
+  in the last few tens of milliseconds of the announce, just as the drain closes the listening socket, is reset by
+  the kernel instead of answered. Measured in B-11: every reset started 4 to 43 ms before the listener closed and
+  ended within 9 ms of it, in the window where the service was answering `503` anyway. None carried a record. A
+  proxy that follows `/health/ready`, which is `503` for the whole announce, has stopped sending by then. A client
+  that ignores readiness can meet one.
 * `MOSTIK_DRAIN_MS ≥ MOSTIK_PUBLISH_DEADLINE_MS + 1 000 ms`, or the service refuses to start and names both
   values (research D6, B-07).
 * The process ends within the grace period even when `close` cannot finish. kore cuts the release stage at
@@ -70,8 +75,8 @@ The first was run by B-09, the second measured by B-08, and the third is built (
 ### Scenario: the drain covers the deadline
 * **Given:** 64 concurrent publishers, each keeping a ledger of key → status, and a broker that is up
 * **When:** `SIGTERM` lands at a random moment, in each of 20 rounds, on each build
-* **Then:** every client got a status. **Not yet:** 1 to 9 requests per round got a reset connection instead
-  (B-11)
+* **Then:** every client got a status, except the few that arrived as the listening socket closed and were reset:
+  1 to 9 per round in B-09's 64-client rounds, and 5 in 10 rounds after B-12 (B-11)
 * **And:** every `200` is in the topic, and no `429` or `503` is; the `504`s are counted both ways
 * *Run by hand with `ci/b-09/run.sh native|jvm 20`, 2026-09-27: zero disagreements in 40 rounds. The control
   (`… 3 control`) put 64 × `504` into every round, and on the JVM two of them landed. Reset connections were

@@ -13,7 +13,7 @@ publishes: [container image with the native binary and the JVM distribution]
 # mostik server
 
 > Read against the code on 2026-09-27 (B-03). What is not built yet is marked *target* with the item that
-> builds it. Open at shutdown: reset connections (B-11) and the JVM build's early close (B-12).
+> builds it.
 
 ## 1. Responsibility
 
@@ -139,8 +139,10 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
   Kotlin/Native an exception there aborts the process with `SIGABRT`. mostik binds `MOSTIK_PORT` once itself and
   closes it, so a busy port is one sentence and exit 1 on both builds. Another process can still take the port in
   the moment between, so this narrows the problem and does not close it (B-10, youndie/keel#49).
-- **A few requests at shutdown get a reset connection**: 1 to 9 per round under 64 clients, on both builds, and
-  no written record behind any of them (B-11).
+- **A connection that arrives as the listener closes is reset.** At the end of the announce, the drain closes the
+  listening socket, and the kernel resets whatever is still in its accept queue. Measured: every reset within
+  ±43 ms of the close, in the window already answering `503`, and no record behind any. It is not a layer's
+  defect but what closing a listener means, so the defence is a proxy that follows readiness (B-11).
 - **Record headers arrive grouped by name**, not in the order they were sent (endpoint-records, measured).
 - **The AOT cache is trained on `/version` only.** Training runs with no broker, so a publish in its workload
   would wait out `max.block.ms` and teach the cache the refusal path. The publishing path is therefore not in

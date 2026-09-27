@@ -351,7 +351,10 @@ equivalent. Settled by B-06. Until then `502` is only for refusals the broker na
 build, with a ledger read against the topic: zero disagreements. Every `200` was there, and no `429` or `503`. The
 broker-stopped control produced 64 × `504` per round, two of which landed on the JVM, so "unknown" held both ways.
 Two things §1.5 and §1.6 did not predict:
-- reset connections, 1 to 9 per round in 25 of 40 rounds, with no written record behind any of them (B-11);
+- reset connections, 1 to 9 per round in 25 of 40 rounds, with no written record behind any of them (B-11).
+  **Mechanism measured:** every one arrived as the drain closed the listening socket, within ±43 ms of it, in the
+  window already answering `503`. The kernel resets an accept queue with its socket. After B-12 there were 5 in
+  10 rounds. That no layer removes it for clients that ignore readiness is recorded rather than filed;
 - the JVM build closing its listener at the signal, so kore's announce is invisible there (B-12). **Cause read and
   fixed:** Ktor 3.6.0's `EmbeddedServerJvm.start` registers `addShutdownHook { stop() }`, which the JVM runs
   concurrently with kore's (`ktor-server-core-jvm-3.6.0-sources.jar!/jvmMain/io/ktor/server/engine/EmbeddedServerJvm.kt`).
