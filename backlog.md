@@ -58,7 +58,7 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-14](docs/backlog/B-14-take-kore-0-1-7-and-remeasure-the-shutdown.md) `[ ]` | Take kore 0.1.7: the refusal opens at the drain, and the shutdown is measured again | P1 | M | B-13 |
+| [B-14](docs/backlog/B-14-take-kore-0-1-7-and-remeasure-the-shutdown.md) `[~]` | Take kore 0.1.7: the refusal opens at the drain, and the shutdown is measured again | P1 | M | B-13 |
 | [B-06](docs/backlog/B-06-does-a-thrown-send-mean-not-written.md) `[?]` | Does a thrown send mean the record was not written? | P2 | S | B-04 |
 
 ## Closed (12)

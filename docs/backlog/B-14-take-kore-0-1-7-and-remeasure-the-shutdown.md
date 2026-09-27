@@ -1,7 +1,7 @@
 ---
 id: B-14
 title: "Take kore 0.1.7: the refusal opens at the drain, and the shutdown is measured again"
-status: open
+status: wip
 priority: P1
 size: M
 stage: stage-5-kore-upstream
