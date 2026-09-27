@@ -31,8 +31,8 @@ file each in [`backlog/`](backlog/), cited as [B-01](backlog/B-01-from-template-
 
 **Every document here is `active`, and each was re-read against the code in B-03, not flipped.**
 `active` does not mean everything described is built. It means nothing described is wrong: what is not
-built yet is marked *target* where a reader meets it, with the item that builds it. The deadline (B-05) and
-the shutdown checks (B-07, B-08, B-09) are the largest of those. `docs_check.py --on-main` refuses a `draft`
+built yet is marked *target* where a reader meets it, with the item that builds it. The shutdown checks
+(B-07, B-08, B-09) are the largest of those. `docs_check.py --on-main` refuses a `draft`
 on the default branch.
 
 **What is verified** is [research-architecture](research/research-architecture.md) §1: each fact

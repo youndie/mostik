@@ -343,7 +343,8 @@ into the proxy's `502`s.
 **Open question 1 (owner, before B-05).** Should readiness follow broker reachability?
 
 **Open question 2 (implementer, B-05).** Is `Retry-After` on `429` a fixed value, or derived from how fast
-the queue drains?
+the queue drains? **Answered 2026-09-27: fixed.** It is the queue wait, rounded up to whole seconds and at least 1.
+Nothing measures the drain, and a value derived from nothing would read as a measurement.
 
 **Open question 3 (owner, after kafkakn B-74).** If B-74 can tell "never queued" apart on only one arm, do
 both builds answer `504` for every expiry, or does each build answer what it can? **Moot, 2026-09-27:** B-74

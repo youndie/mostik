@@ -41,7 +41,7 @@ is new here is that the drain has to outlast the publish deadline.
 1. `SIGTERM`. kore flips readiness (`/health/ready` → `503`) and waits `preDrainWait` (5 s by default).
 2. The refusal starts: every path but the probes answers kore's `503`.
 3. The engine drains for up to `drain` (15 s by default). Each request in it is bounded by the deadline
-   (*target*, B-05; today `send` is unbounded).
+   (B-05).
 4. `producer.close()` flushes and releases, as the `ShutdownParticipant`.
 
 Steps 1, 2 and 4 are what both builds printed on `SIGTERM` in B-01: `ANNOUNCE` 5.0 s, then `DRAIN`, then

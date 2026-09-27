@@ -25,13 +25,13 @@ gets `504` knows that nobody knows yet, and that retrying may write the record t
 
 ## 2. Business rules
 
-* `200` is sent only after `send` returned the broker's metadata, never after the record was merely
-  queued.
-* A record answered `429` (*target*, B-05) or `503` is never in the topic.
+* `200` is sent only after `Delivery.await()` returned the broker's metadata, never after the record was
+  merely queued.
+* A record answered `429`, `502 producer-refused` or `503` is never in the topic.
 * A record answered `504` may or may not be in the topic, and the body says `"retrySafe": false`.
-* *Target, B-05:* every request ends within `MOSTIK_PUBLISH_DEADLINE_MS` plus a fixed margin; none waits
-  out a producer timeout (research §1.4). **Today `send` is unbounded**, so a request against a silent broker
-  waits as long as the producer does.
+* Every request ends within `MOSTIK_PUBLISH_DEADLINE_MS` plus a small margin; none waits out a producer
+  timeout (research §1.4). Measured: 3 011 ms (native) and 3 022 ms (JVM) against a 3 000 ms deadline with the
+  broker silent (B-05).
 * A topic outside `MOSTIK_TOPICS` and a body over `MOSTIK_MAX_RECORD_BYTES` are refused before the
   producer is called.
 * No request answers `500` (research D2).
@@ -40,12 +40,12 @@ gets `504` knows that nobody knows yet, and that retrying may write the record t
 
 1. The route checks the topic against the allowlist and the body against the size limit.
 2. It builds a `ProducerRecord` from the body, `Record-Key` and `Record-Header-*` (research D1).
-3. **Today:** `producer.send(record)`, unbounded. Metadata becomes `200`, and anything it throws becomes
-   `504 outcome-unknown`.
-4. *Target, B-05:* the two steps replace step 3. First `producer.enqueue(record)`, bounded by
-   `max.block.ms` (= `MOSTIK_QUEUE_WAIT_MS`) and not by a timeout; `RecordNotQueuedException` becomes `429`.
-   Then `withTimeout(deadline − elapsed) { delivery.await() }`: an expiry becomes `504`, and a named refusal
-   `502` (B-06).
+3. `producer.enqueue(record)`, bounded by `max.block.ms` (= `MOSTIK_QUEUE_WAIT_MS`) and **not** by a
+   timeout. `RecordNotQueuedException` becomes `429` with `Retry-After`. Any other failure here is
+   `502 producer-refused`: the record was not queued, and waiting will not change that.
+4. `withTimeout(deadline − time spent in step 3) { delivery.await() }`. Metadata becomes `200`. An expiry, or
+   any failure after queueing, becomes `504 outcome-unknown`. Whether a named refusal could be `502` instead is
+   B-06.
 
 ## 4. Code anchors
 
@@ -73,19 +73,25 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 * **Automated:** `PublishRoutesTest::a record is sent as the body key and headers and the answer is where it landed`
   for the route's half; the topic's half is `ci/b-03/run.sh`, green on both builds on 2026-09-27
 
-### Scenario: queue full, never queued (*target*, B-05)
+### Scenario: queue full, never queued
 * **Given:** the producer's queue is at its bound and stays there past `MOSTIK_QUEUE_WAIT_MS`
 * **When:** a client posts
 * **Then:** `429` with `Retry-After` and `"error": "not-queued"`
 * **And:** after the queue drains, no record with that key is in the topic
-* *kafkakn measured the same refusal on both arms (B-74), and it is published (B-04).*
+* **Automated:** `PublishRoutesTest::a record not queued is 429 with Retry-After` for the route's half; the
+  topic's half is `ci/b-05/run.sh`, green on both builds on 2026-09-27: `429` after 1 013 ms (native) and
+  1 021 ms (JVM) with a 1 000 ms queue wait, and the record absent after the queue drained
 
-### Scenario: queued, broker silent (*target*, B-05)
+### Scenario: queued, broker silent
 * **Given:** the broker is paused after the record is queued
 * **When:** the deadline expires
 * **Then:** `504` with `"outcome": "unknown"` and `"retrySafe": false`, within the deadline plus the margin
 * **And:** after the broker resumes, the record **is** in the topic. This is the scenario that proves
   the word "unknown" is needed (research H1).
+* **Automated:** `PublishRoutesTest::a delivery that does not answer within the deadline is 504 outcome-unknown`
+  and `the time spent queueing is taken off the deadline` for the route's half; the topic's half is
+  `ci/b-05/run.sh`, green on both builds on 2026-09-27: `504` after 3 011 ms and 3 022 ms, and the record found
+  in the topic after `resume`
 
 ### Scenario: topic not in the allowlist
 * **Given:** `audit` is not in `MOSTIK_TOPICS`
@@ -107,9 +113,9 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 * **Given:** the native binary and the JVM distribution against the same broker
 * **When:** every scenario above runs on each
 * **Then:** each gives the same status on both, or this document names the difference per build
-* *Checked for acknowledged, 404 and 413 by `ci/b-03/run.sh` on both builds, 2026-09-27. The two B-05
-  scenarios wait for the deadline. With kafkakn `0.1.0.11` (B-04), both arms refuse a record whose topic has no
-  metadata, so they will answer alike there too.*
+* *Checked on both builds on 2026-09-27: acknowledged, 404 and 413 by `ci/b-03/run.sh`, and the two deadline
+  scenarios by `ci/b-05/run.sh`. Same statuses everywhere, down to 60 requests filling a full queue: 10 × `504`
+  and 50 × `429` on each build.*
 
 ## 6. Out of scope
 

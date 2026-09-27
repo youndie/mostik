@@ -13,7 +13,7 @@ publishes: [container image with the native binary and the JVM distribution]
 # mostik server
 
 > Read against the code on 2026-09-27 (B-03). What is not built yet is marked *target* with the item that
-> builds it; the deadline (B-05) is the largest of those.
+> builds it; the shutdown checks (B-07, B-08, B-09) are the largest of those.
 
 ## 1. Responsibility
 
@@ -43,11 +43,11 @@ read from Kafka.
 
 ## 3. How it is built
 
-**Today the route calls `send`, unbounded, and any failure it throws is `504`.** *Target, B-05:* the
-deadline is split into kafkakn's two steps (research §1.4, correction):
+**The deadline is split into kafkakn's two steps** (research §1.4, correction; B-05):
 
 1. `enqueue(record)` runs with **no** coroutine timeout, bounded by `max.block.ms`, which mostik sets from
-   `MOSTIK_QUEUE_WAIT_MS`. `RecordNotQueuedException` becomes `429`.
+   `MOSTIK_QUEUE_WAIT_MS`. `RecordNotQueuedException` becomes `429`; any other failure there is `502
+   producer-refused`, because the record was not queued and waiting will not help.
 2. `delivery.await()` runs under `withTimeout(PUBLISH_DEADLINE_MS − time spent in step 1)`. An expiry
    becomes `504`.
 
@@ -56,7 +56,13 @@ the thread back while it waits for room, so the cut is honoured seconds late, an
 by then. kafkakn measured this in B-73.
 
 **An expiry is translated, never rethrown.** The `TimeoutCancellationException` from step 2 becomes `504`
-inside the route. Escaping to Ktor, it would be a `500`, the one status research D2 excludes.
+inside the route. Escaping to Ktor, it would be a `500`, the one status research D2 excludes. The clock step 1
+is timed with is a parameter of the route (`TimeSource`), so a test makes step 1 take most of the deadline
+without waiting for it.
+
+**`Retry-After` on `429` is the queue wait, rounded up to whole seconds, at least 1.** A retry sooner asks the
+same full queue again. Nothing measures how fast the queue drains, so a number derived from the drain would be a
+number derived from nothing (research, open question 2).
 
 **The shutdown order is keel's, with the producer in the SQLite pool's slot** (research §1.6): not ready,
 then refusal, then the engine drain, then `producer.close()` as a `ShutdownParticipant`. The drain has to
@@ -102,8 +108,8 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 | `MOSTIK_PORT` | listening port; default `8080` | no |
 | `MOSTIK_BOOTSTRAP_SERVERS` | Kafka's `bootstrap.servers` | yes |
 | `MOSTIK_TOPICS` | the allowlist, comma-separated; any other topic is `404` | yes |
-| `MOSTIK_PUBLISH_DEADLINE_MS` | the bound on one publish; default `5000`. Read and checked for being positive; *enforced from B-05* | no |
-| `MOSTIK_QUEUE_WAIT_MS` | becomes the producer's `max.block.ms`, which bounds `enqueue`; must be shorter than the deadline; default `1000`. *Target, B-05: not declared yet, so setting it stops the start-up as an unknown variable* | no |
+| `MOSTIK_PUBLISH_DEADLINE_MS` | the bound on one publish; default `5000`. Enforced by the route (B-05) | no |
+| `MOSTIK_QUEUE_WAIT_MS` | becomes the producer's `max.block.ms`, which bounds `enqueue`; must be shorter than the deadline; default `1000`. It is also `Retry-After` on a `429`, in seconds | no |
 | `MOSTIK_MAX_RECORD_BYTES` | a larger body is `413` before `send`; default `1048576` | no |
 | `MOSTIK_TRACY_ENDPOINT`, `MOSTIK_TRACY_KEY` | observability, both or neither, as in keel | no |
 | `KAFKA_*` | producer keys, outside the schema: `KAFKA_ACKS` → `acks`. kafkakn refuses a key neither arm honours | no |
@@ -116,9 +122,11 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 - **The kafkakn version is pinned, and the pin is load-bearing.** `0.1.0.11` is the first version in which native
   `enqueue` refuses a record whose topic has no metadata (kafkakn B-76). `EnqueueContractTest` fails on native
   against `0.1.0.10`, so a pin moved back is caught by the suite (B-04).
-- *Target, B-05:* **`max.block.ms` is mostik's, not the operator's.** A `KAFKA_MAX_BLOCK_MS` will stop the
-  start-up, because the queue wait has one source, `MOSTIK_QUEUE_WAIT_MS`. Today `KAFKA_MAX_BLOCK_MS` passes
-  through like any other key.
+- **`max.block.ms` is mostik's, not the operator's.** A `KAFKA_MAX_BLOCK_MS` stops the start-up, because the
+  queue wait has one source, `MOSTIK_QUEUE_WAIT_MS` (B-05).
+- **The queue's bound is a platform key.** Filling the queue on purpose needs `KAFKA_QUEUE_BUFFERING_MAX_MESSAGES`
+  on the native build and `KAFKA_BUFFER_MEMORY` on the JVM build, and each build refuses the other's key
+  (`ci/b-05/run.sh`).
 - **Record headers arrive grouped by name**, not in the order they were sent (endpoint-records, measured).
 - **The AOT cache is trained on `/version` only.** Training runs with no broker, so a publish in its workload
   would wait out `max.block.ms` and teach the cache the refusal path. The publishing path is therefore not in

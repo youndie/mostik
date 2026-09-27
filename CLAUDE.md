@@ -6,10 +6,10 @@ may write it twice. Built from [keel](https://github.com/youndie/keel) (a server
 Kotlin/Native binary and a JVM distribution, one image) and publishing through
 [kafkakn](https://github.com/youndie/kafkakn).
 
-**State (2026-09-27): the route publishes, with no deadline yet.** `POST /topics/{topic}/records` answers
-`200` with the offset the broker gave, checked by reading the topic on both builds (B-03). `send` is still
-unbounded; the deadline is B-05. kafkakn is pinned at `0.1.0.11`, the first version whose native `enqueue`
-refuses a record with no topic metadata, as the JVM's does (B-04). The repository exists only on this Mac —
+**State (2026-09-27): the route publishes under a deadline.** `POST /topics/{topic}/records` answers `200`
+with the offset the broker gave (B-03), `429` for a record provably never queued, and `504 outcome-unknown`
+when the deadline wins after queueing (B-05). All of it is checked by reading the topic, on both builds.
+kafkakn is pinned at `0.1.0.11` (B-04). What is left is the shutdown checks: B-07, B-08, B-09. The repository exists only on this Mac —
 it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 

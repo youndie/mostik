@@ -15,8 +15,8 @@ waits for the acknowledgement under a deadline, and says `504` when it does not 
 
 *mostik* is Russian for "a small bridge".
 
-> **Status: `200`, `404` and `413` work, checked on both builds by reading the topic; the deadline behind
-> `429` and `504` is not built yet.** The plan, and the reason the statuses are shaped this way, is in
+> **Status: every status above works on both builds, and each was checked by reading the topic.** What is
+> left is proving the shutdown under load. The plan, and the reason the statuses are shaped this way, is in
 > [docs/research](docs/research/research-architecture.md). The order of work is in
 > [backlog.md](backlog.md).
 
