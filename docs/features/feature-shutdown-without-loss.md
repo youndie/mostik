@@ -50,6 +50,11 @@ is new here is that the drain has to outlast the publish deadline.
   (`RELEASE_POOLS DEADLINE_EXCEEDED`, exit 0) and 5.05 to 5.12 s on the JVM (nothing was queued, exit 143),
   against a 30 s grace period (B-08). The 300 s `close` seen in B-04 is what `close` alone takes; the process
   does not wait for it.
+* **A signal the moment the service first answers readiness ends as cleanly as a late one.** On native, from before
+  `start`, the signal is kore's and not Ktor's (kore `0.1.9`), and kore's handler is written in C (kore `0.1.10`).
+  Measured with `ci/b-16/run.sh`: 100 of 100 native starts exited `0`, the slowest in 5.07 s, with no hang and no
+  death by signal (B-16). The script's own controls, a stand-in that ignores `SIGTERM` and one that crashes on it,
+  are caught as hung and as 139.
 
 ## 3. Flow
 
