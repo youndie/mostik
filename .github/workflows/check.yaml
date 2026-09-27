@@ -130,48 +130,10 @@ jobs:
           done
           [ "$fail" = 0 ] || exit 1
 
-      # THE arm64 TEST BINARY, CROSS-LINKED HERE AND RUN SOMEWHERE ELSE.
-      #
-      # Kotlin/Native has no `linux_arm64` host, so `linuxArm64Test` is never CREATED — it does not
-      # appear as skipped, it does not appear at all, and no runner can be told to run it. Linking and
-      # running are separable even where the plugin will not do it for you.
-      #
-      # `linkDebugTestLinuxArm64` and not `build`: with two native targets `stageNativeImage` stages
-      # both release binaries under one name and Gradle refuses (youndie/sborka#80). This path does not
-      # go through it.
-      - run: ./gradlew linkDebugTestLinuxArm64 -Pmostik.linuxArm64=true --no-daemon
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linuxarm64-test-binary
-          path: server/build/bin/linuxArm64/debugTest/test.kexe
-          if-no-files-found: error
-
-  # THE SUITE THAT HOST CANNOT RUN. Takes the binary the x86-64 job cross-linked and executes it on a
-  # machine of that architecture.
-  linux-arm64-suite:
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
-    needs: build
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: linuxarm64-test-binary
-
-      - name: run the linuxArm64 suite
-        run: |
-          set -u
-          [ -f test.kexe ] || { echo "::error::no linuxArm64 test binary was produced"; exit 1; }
-          chmod +x test.kexe
-          # THE EXIT CODE IS THE VERDICT and the count under it is a floor. A suite that ran zero
-          # tests exits zero, which is the failure this repository keeps meeting; reading a *pass*
-          # out of the text would be the other one, so it is not done here.
-          out=$(./test.kexe 2>&1) || fail=1
-          echo "$out"
-          n=$(echo "$out" | sed -n 's/.*Running \([0-9][0-9]*\) test.*/\1/p' | head -1)
-          echo "$((${n:-0})) tests on $(uname -m)"
-          [ "${fail:-0}" = 0 ] || { echo "::error::the linuxArm64 suite failed"; exit 1; }
-          [ "${n:-0}" -gt 0 ] || { echo "::error::the linuxArm64 binary ran zero tests"; exit 1; }
+      # NO arm64 SUITE HERE, unlike keel. kafkakn publishes no linuxArm64 variant (its backlog.md, "linuxArm64 is
+      # not published and does not run in CI", the owner's decision of 2026-09-25), so `-Pmostik.linuxArm64=true`
+      # fails at dependency resolution before anything compiles. The first push to GitHub found it: the local gate
+      # this repository used until then never ran the step. It comes back when kafkakn publishes the target.
 
   # Separate from the gate, and on a schedule rather than on a pull request, because an anchor rots
   # when somebody refactors a **different** repository. A pull request here is the least likely

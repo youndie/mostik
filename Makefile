@@ -69,7 +69,7 @@ report:
 
 # The code gate, and CI's `build` job runs exactly this. One `build` for every target the project
 # declares — which today is `jvm` and `linuxX64`; `linuxArm64` is behind `mostik.linuxArm64` and is not
-# covered by CI yet (keel's B-15, blocked on youndie/razves#3).
+# covered by CI: kafkakn publishes no linuxArm64 variant, so it cannot resolve.
 #
 # What a green run here does NOT cover is in CLAUDE.md rather than assumed: a Mac cannot link an ELF,
 # so the native half of this only really runs on the Linux box.
