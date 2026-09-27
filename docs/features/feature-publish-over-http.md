@@ -125,7 +125,9 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 
 * **On the native build a publish can get no answer although its record was written** — about one in 60 000 to
   375 000 under 64 clients, none on the JVM build in 746 799. The route completes `respond`, and the connection
-  closes with no bytes. A client has to read "no answer" as "unknown", the same as `504` (B-15).
+  closes with no bytes. A client has to read "no answer" as "unknown", the same as `504` (B-15). A server with only
+  Ktor in it does the same; the reproduction is kept in
+  [ktor-cio-empty-reply-repro](https://github.com/youndie/ktor-cio-empty-reply-repro) to recheck later versions.
 * Record headers arrive grouped by name, not in the order they were sent (endpoint-records, measured).
 * `429` comes from `enqueue` throwing, never from a cut wait. A timeout around `enqueue` would answer
   `429` for a record that lands on the JVM (kafkakn B-73, research §1.3).

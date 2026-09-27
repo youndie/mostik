@@ -61,4 +61,5 @@ by design (research D2).
 "Empty reply from server") must treat the record as *outcome unknown*. On the native build, about one publish in
 60 000 to 375 000 under 64 clients got no answer although its record **was** written; the JVM build showed none in
 746 799 (B-15, measured 2026-09-27). The route had answered. The response is lost below it, in Ktor's CIO on
-native.
+native: a server with nothing but Ktor in it loses answers the same way ([ktor-cio-empty-reply-repro](https://github.com/youndie/ktor-cio-empty-reply-repro), kept to
+recheck later Ktor versions; not reported upstream).

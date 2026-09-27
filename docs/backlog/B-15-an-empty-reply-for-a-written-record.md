@@ -1,7 +1,7 @@
 ---
 id: B-15
 title: "A native publish whose record was written got an empty reply"
-status: question
+status: done
 priority: P1
 size: M
 stage: stage-4-shutdown
@@ -82,7 +82,7 @@ already true either way.
 
 ## Iteration 2 (2026-09-27): the owner chose 1, and the minimal reproduction is Ktor's alone
 
-`ci/b-15/repro/` is a standalone build: Kotlin 2.4.20 and Ktor 3.6.0 CIO, with no kore, no kafkakn and no content
+`ci/b-15/repro/` (moved out in iteration 3) is a standalone build: Kotlin 2.4.20 and Ktor 3.6.0 CIO, with no kore, no kafkakn and no content
 negotiation. It has one route: read the body, `delay(10)`, `respondText` a small JSON string. `load.sh` is the same
 64-client load as `ci/b-15/run.sh`. The same source compiles for `linuxX64` and for the JVM.
 
@@ -98,10 +98,37 @@ negotiation. It has one route: read the body, `delay(10)`, `respondText` a small
   code shows none.
 - The host was Ubuntu 24.04 on WSL2 (kernel 6.6.87.2), glibc 2.39, curl 8.5.0.
 - **The upstream report is drafted for the owner to file**, because Ktor is JetBrains and no LLM-made contribution
-  goes there. The draft carries the reproduction, the load as a copy-paste script (`ci/b-15/repro/issue-snippet.sh`,
-  run as written before it was handed over: run 3) and the table above, and it names no project of this portfolio.
+  goes there. The draft carries the reproduction, the load as a copy-paste script (run as written before it was handed over: run 3) and the table above, and it names no project of this portfolio.
 - **What stays true in mostik whatever Ktor does:** a client reads "no answer" as "unknown", the same as `504`. The
   endpoint and feature documents already say so.
 
 **Still a question, now a narrower one:** the item's second criterion is met when the owner files the report.
 Then this item records its address and closes.
+
+## Iteration 3 (2026-09-27): not reported, accepted, and the reproduction kept for rechecks
+
+**The owner's decision:** the report is not filed. mostik takes option 2: "no answer" is "unknown", the same as `504`,
+as the endpoint and feature documents already say. The reproduction moved out of this repository into its own,
+[youndie/ktor-cio-empty-reply-repro](https://github.com/youndie/ktor-cio-empty-reply-repro) (public, checked out
+next to this one, with a mutagen session of the same name), so that it can be rerun against later Kotlin and Ktor versions without mostik's build.
+
+- `run.sh [seconds] [gradle arguments]` builds both targets, runs the same 64-client load against the native server
+  and then the JVM one, and prints one line for its `results.md`, with the Kotlin and Ktor versions read back from
+  the build. `-PktorVersion=…` and `-PkotlinVersion=…` pick the versions.
+- It gives no verdict rather than a false pass in these cases:
+  - the run is too short to expect at least 5 lost answers at the known rate;
+  - the JVM control loses any;
+  - anything other than a `200` or a lost answer comes back;
+  - the load falls under 300 requests a second;
+  - `curl` does not report a deliberately empty reply as 52.
+- Its first 20-second smoke run caught a lost answer (1 in 27 502 native, 0 in 26 887 JVM). Its first full run, 1 200 s a
+  build: 13 lost in 1 377 851 native, 0 in 1 037 627 JVM, verdict "reproduced" (`results.md` there, `e495726`).
+- Found on the way, and not mostik's: with Ktor 3.5.2 the native server under this load has every client end on a
+  30 s timeout within 20 s (3 runs of 3; 3.6.0 in none). On `SIGTERM` the native server closes its listener but its
+  process does not exit, so `run.sh` sends `SIGKILL` after ten seconds. mostik does not see this, because kore owns
+  its shutdown.
+
+**Against the criteria.** The first is met: the rate per build, from runs of 1.5 million requests each. The second
+is met as far as it can be. The layer is named, with a JVM control and a reproduction with nothing of mostik's in
+it. The fix is Ktor's, and the owner chose not to file the upstream issue. If a later Ktor fixes it, the
+reproduction will show it, and the quirk in the endpoint and feature documents comes out then.

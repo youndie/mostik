@@ -42,7 +42,7 @@ is new here is that the drain has to outlast the publish deadline.
   none with a record. A proxy that follows `/health/ready`, which is `503` for the whole announce, has stopped
   sending by then. A client that ignores readiness can meet one.
   - The 59th reset is not this mechanism. It happened in normal serving, and its record **was** written
-    (B-15, open).
+    (B-15: Ktor's CIO on native, accepted).
 * `MOSTIK_DRAIN_MS ≥ MOSTIK_PUBLISH_DEADLINE_MS + 1 000 ms`, or the service refuses to start and names both
   values (research D6, B-07).
 * The process ends within the grace period even when `close` cannot finish. kore cuts the release stage at
