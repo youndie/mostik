@@ -22,7 +22,7 @@ when the deadline wins after queueing. Every answer was checked by reading the t
 the JVM build keep its listener through the announce, as native does (Ktor's JVM hook, youndie/kore#90). B-14 took kore
 `0.1.7`: the service now serves through the announce and refuses from the drain. B-10 made
 a busy port a one-line refusal. B-11 found the reset connections at shutdown to be the listening socket's accept queue closing with it, in a window already
-answering `503`. What is open: the question in B-06.
+answering `503`. B-06 kept every failure after queueing at `504`, because neither arm says whether a failed delivery was persisted.
 
 **Part of this backlog waited on another repository, and no longer does.** The deadline's answers rested on
 kafkakn B-73, B-74 and B-76. All three are published in kafkakn `0.1.0.11`, which B-04 pins.
