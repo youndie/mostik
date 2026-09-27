@@ -27,10 +27,12 @@ is new here is that the drain has to outlast the publish deadline.
 
 ## 2. Business rules
 
-* A request that arrives after the refusal starts gets `503` and is never sent. This is kore's
-  `installShutdownRefusal`, tested in kore; mostik's run of it under load is B-09.
-* *Target, B-09:* a request in flight when the signal lands gets a real answer (`200`, `429` or `504`),
-  never a reset connection.
+* A request that arrives after the signal gets `503` and is never sent, or its connection is refused. Measured
+  under load in B-09: no `503` record in any topic in 40 rounds. On native, kore's `503` covers the whole announce.
+  On the JVM, the listener is gone at the signal itself (B-12).
+* A request in flight when the signal lands gets a real answer (`200`, `429` or `504`), and every answer is
+  true: in B-09 no `200` was missing, and no `429` or `503` was present. **Not yet: "never a reset
+  connection."** 1 to 9 requests per round got a reset, none of whose records reached the topic (B-11).
 * `MOSTIK_DRAIN_MS ≥ MOSTIK_PUBLISH_DEADLINE_MS + 1 000 ms`, or the service refuses to start and names both
   values (research D6, B-07).
 * The process ends within the grace period even when `close` cannot finish. kore cuts the release stage at
@@ -58,18 +60,21 @@ Steps 1, 2 and 4 are what both builds printed on `SIGTERM` in B-01: `ANNOUNCE` 5
 |---|---|
 | mostik-server | `server/src/commonMain/kotlin/io/github/youndie/mostik/Wiring.kt` — the sequence, and the producer as its participant |
 | mostik-server | `server/src/commonMain/kotlin/io/github/youndie/mostik/MostikConfig.kt` — `DRAIN_MS` and the drain-budget check (B-07) |
-
-The oracle for the scenarios below is B-09's client-side ledger read against the topic. It is not written yet.
+| the oracle | `ci/b-09/run.sh` — 64 clients' ledgers read against each round's topic (B-09) |
 
 ## 5. Scenarios (BDD / test cases)
 
-The first is *target*: B-09 runs it. The second was measured by B-08 and the third is built (B-07).
+The first was run by B-09, the second measured by B-08, and the third is built (B-07).
 
 ### Scenario: the drain covers the deadline
 * **Given:** 64 concurrent publishers, each keeping a ledger of key → status, and a broker that is up
 * **When:** `SIGTERM` lands at a random moment, in each of 20 rounds, on each build
-* **Then:** every client got a status
+* **Then:** every client got a status. **Not yet:** 1 to 9 requests per round got a reset connection instead
+  (B-11)
 * **And:** every `200` is in the topic, and no `429` or `503` is; the `504`s are counted both ways
+* *Run by hand with `ci/b-09/run.sh native|jvm 20`, 2026-09-27: zero disagreements in 40 rounds. The control
+  (`… 3 control`) put 64 × `504` into every round, and on the JVM two of them landed. Reset connections were
+  seen in 25 of the 40 rounds (B-11).*
 
 ### Scenario: broker gone at shutdown (built; measured, not automated)
 * **Given:** the broker is stopped and requests are in flight

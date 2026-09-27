@@ -347,6 +347,16 @@ is expected in the bundled 2.13.0 header, which has not been read. The Java clie
 equivalent. Settled by B-06. Until then `502` is only for refusals the broker names (for example
 `RECORD_TOO_LARGE`), and everything else is `504`.
 
+**Measured under load, 2026-09-27 (B-09).** Forty rounds of `SIGTERM` at a random moment under 64 clients, 20 per
+build, with a ledger read against the topic: zero disagreements. Every `200` was there, and no `429` or `503`. The
+broker-stopped control produced 64 × `504` per round, two of which landed on the JVM, so "unknown" held both ways.
+Two things §1.5 and §1.6 did not predict:
+- reset connections, 1 to 9 per round in 25 of 40 rounds, with no written record behind any of them (B-11);
+- the JVM build closing its listener at the signal, so kore's announce is invisible there (B-12).
+
+The first is against the feature's promise. The second is a difference between the builds, and neither makes an
+answer false.
+
 **Risk 1. The proxy times out before mostik does, and answers `504` itself.** The client then sees a
 `504` without mostik's body, and cannot tell it from mostik's. Mitigation: every mostik error body
 carries its `error` code, so a `504` without one is known to be the proxy's. The one exception is

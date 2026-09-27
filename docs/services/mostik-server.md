@@ -13,7 +13,7 @@ publishes: [container image with the native binary and the JVM distribution]
 # mostik server
 
 > Read against the code on 2026-09-27 (B-03). What is not built yet is marked *target* with the item that
-> builds it; the shutdown under load (B-09) is the largest of those.
+> builds it. Open at shutdown: reset connections (B-11) and the JVM build's early close (B-12).
 
 ## 1. Responsibility
 
@@ -130,6 +130,11 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 - **The queue's bound is a platform key.** Filling the queue on purpose needs `KAFKA_QUEUE_BUFFERING_MAX_MESSAGES`
   on the native build and `KAFKA_BUFFER_MEMORY` on the JVM build, and each build refuses the other's key
   (`ci/b-05/run.sh`).
+- **The JVM build stops listening at `SIGTERM`.** Native answers kore's `503` through the 5 s announce, while the
+  JVM build refuses connections from 1 ms after the signal. A readiness probe there stops answering rather than
+  turning `503` (B-12, likely keel's or kore's).
+- **A few requests at shutdown get a reset connection**: 1 to 9 per round under 64 clients, on both builds, and
+  no written record behind any of them (B-11).
 - **Record headers arrive grouped by name**, not in the order they were sent (endpoint-records, measured).
 - **The AOT cache is trained on `/version` only.** Training runs with no broker, so a publish in its workload
   would wait out `max.block.ms` and teach the cache the refusal path. The publishing path is therefore not in

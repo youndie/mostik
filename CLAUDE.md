@@ -10,7 +10,9 @@ Kotlin/Native binary and a JVM distribution, one image) and publishing through
 with the offset the broker gave (B-03), `429` for a record provably never queued, and `504 outcome-unknown`
 when the deadline wins after queueing (B-05). All of it is checked by reading the topic, on both builds.
 kafkakn is pinned at `0.1.0.11` (B-04). The drain budget is checked at start-up (B-07). `close` is cut by kore at 3 s when the broker is gone,
-and the process still exits within its grace period (B-08). What is left is B-09, the shutdown under load. The repository exists only on this Mac —
+and the process still exits within its grace period (B-08). Under load, 40 rounds of `SIGTERM` gave zero
+disagreements between clients' ledgers and the topic (B-09). Open: reset connections at shutdown (B-11), the JVM
+build closing its listener at the signal (B-12), and a busy port aborting the native build (B-10). The repository exists only on this Mac —
 it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 
