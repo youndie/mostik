@@ -11,8 +11,8 @@ with the offset the broker gave (B-03), `429` for a record provably never queued
 when the deadline wins after queueing (B-05). All of it is checked by reading the topic, on both builds.
 kafkakn is pinned at `0.1.0.11` (B-04). The drain budget is checked at start-up (B-07). `close` is cut by kore at 3 s when the broker is gone,
 and the process still exits within its grace period (B-08). Under load, 40 rounds of `SIGTERM` gave zero
-disagreements between clients' ledgers and the topic (B-09). Open: reset connections at shutdown (B-11), the JVM
-build closing its listener at the signal (B-12), and a busy port aborting the native build (B-10). The repository exists only on this Mac —
+disagreements between clients' ledgers and the topic (B-09). Both builds now answer `503` through the announce (B-12). Open:
+reset connections at shutdown (B-11), and a busy port aborting the native build (B-10). The repository exists only on this Mac —
 it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 
@@ -113,6 +113,9 @@ repositories open. The full list with addresses is keel's, at
   and on the JVM *after* it, from identical source. This is the reason kore exists.
 - **Never call `addShutdownHook`.** One global slot on Native, last registration wins, and the
   callback runs on the signal stack.
+- **On the JVM, switch Ktor's own shutdown hook off before the server starts**
+  (`keepKtorOutOfTheShutdown()`, youndie/kore#90). Ktor's `start()` registers one that stops the engine, and the JVM
+  runs it alongside kore's, so the listener closes at the signal and the announce is invisible (B-12).
 - **`runUntilSignal` goes after `server.start(wait = false)`**, because its default `watch` argument
   installs the handler at the moment of the call. Print the transcript **inside** `onFinished`: on
   the JVM the line after the call never runs.

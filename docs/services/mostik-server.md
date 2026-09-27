@@ -130,9 +130,11 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 - **The queue's bound is a platform key.** Filling the queue on purpose needs `KAFKA_QUEUE_BUFFERING_MAX_MESSAGES`
   on the native build and `KAFKA_BUFFER_MEMORY` on the JVM build, and each build refuses the other's key
   (`ci/b-05/run.sh`).
-- **The JVM build stops listening at `SIGTERM`.** Native answers kore's `503` through the 5 s announce, while the
-  JVM build refuses connections from 1 ms after the signal. A readiness probe there stops answering rather than
-  turning `503` (B-12, likely keel's or kore's).
+- **Ktor's JVM shutdown hook is switched off, and has to be.** Ktor's `EmbeddedServer.start` registers a JVM
+  shutdown hook that stops the engine, and the JVM runs it at the same moment as kore's, so the JVM build used to
+  stop listening 1 ms after `SIGTERM`. `keepKtorOutOfTheShutdown()` (server `jvmMain`) sets
+  `io.ktor.server.engine.ShutdownHook=false` as the first line of every JVM `main`. It is a workaround with an
+  address, youndie/kore#90, reproduced on keel itself (B-12).
 - **A few requests at shutdown get a reset connection**: 1 to 9 per round under 64 clients, on both builds, and
   no written record behind any of them (B-11).
 - **Record headers arrive grouped by name**, not in the order they were sent (endpoint-records, measured).

@@ -28,8 +28,9 @@ is new here is that the drain has to outlast the publish deadline.
 ## 2. Business rules
 
 * A request that arrives after the signal gets `503` and is never sent, or its connection is refused. Measured
-  under load in B-09: no `503` record in any topic in 40 rounds. On native, kore's `503` covers the whole announce.
-  On the JVM, the listener is gone at the signal itself (B-12).
+  under load in B-09: no `503` record in any topic in 40 rounds. Both builds answer kore's `503` through the whole
+  announce and refuse connections only after it (`ci/b-12/run.sh`). The JVM build does so since B-12 switched off
+  Ktor's own JVM shutdown hook; before that, it refused from 1 ms after the signal.
 * A request in flight when the signal lands gets a real answer (`200`, `429` or `504`), and every answer is
   true: in B-09 no `200` was missing, and no `429` or `503` was present. **Not yet: "never a reset
   connection."** 1 to 9 requests per round got a reset, none of whose records reached the topic (B-11).
