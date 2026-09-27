@@ -37,7 +37,8 @@ include(":server")
 
 // The JVM distribution, and nothing else — one `main`, `application` and the AOT cache. Separate
 // because `application` and zavarnik are `kotlinJvm`-only and cannot apply to a multiplatform
-// module: research D5, and B-03 for what it cost to fit.
+// module: research D5, and for what it cost to fit,
+// https://github.com/youndie/keel/blob/main/docs/backlog/B-03-jvm-half-ships.md
 //
 // NOT `:server-jvm`, WHICH IS THE NAME THE DOCUMENTS USED UNTIL IT WAS BUILT. Kotlin names a
 // multiplatform module's JVM artefact `<module>-jvm-<version>.jar`, so `:server`'s is already

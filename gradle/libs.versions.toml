@@ -79,7 +79,7 @@ sborkaNativeService = { id = "io.github.youndie.sborka.native-service", version.
 koreBuild = { id = "io.github.youndie.kore.build", version.ref = "kore" }
 
 # The JVM half's module shape — `application`, the distribution's name and zavarnik's readiness
-# default — as a convention rather than as twelve lines every native service writes again. B-17.
+# default — as a convention rather than as twelve lines every native service writes again. keel B-17.
 sborkaJvmDistribution = { id = "io.github.youndie.sborka.jvm-distribution", version.ref = "sborka" }
 
 razves = { id = "io.github.youndie.razves", version.ref = "razves" }

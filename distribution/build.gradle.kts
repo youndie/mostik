@@ -11,9 +11,11 @@
 //
 // THESE TWELVE LINES ARE THE ONES ACCEPTANCE 6 ARGUED ABOUT, and the argument is worth knowing when
 // you edit them. Counting the version catalog as build logic, this module put the repository at 115
-// against a budget of 100; counting build logic alone it is 81. B-03 has the four options and why
-// this one. The follow-up is B-17: every native service in this portfolio that wants a shipped JVM
-// half needs this same file, which is the definition of something belonging in sborka.
+// against a budget of 100; counting build logic alone it is 81. The four options and why this one:
+// https://github.com/youndie/keel/blob/main/docs/backlog/B-03-jvm-half-ships.md
+// The follow-up moved most of this file into sborka, because every native service in this portfolio
+// that wants a shipped JVM half needs it, which is the definition of something belonging there:
+// https://github.com/youndie/keel/blob/main/docs/backlog/B-17-adopt-the-jvm-distribution-convention.md
 
 plugins {
     alias(wip.plugins.kotlinJvm)
@@ -29,7 +31,7 @@ dependencies { implementation(project(":server")) }
 
 // THE LINES THAT ARE THIS SERVICE'S. Everything else this module used to say — `application`, the
 // toolchain, the module-name collision guard, zavarnik's readiness default — is
-// `sborka.jvm-distribution` now (B-17, sborka#78). The workload stays here because what is worth
+// `sborka.jvm-distribution` now (sborka#78, and the item above). The workload stays here because what is worth
 // training a cache on is a property of the service rather than of the shape.
 jvmDistribution {
     mainClass = "io.github.youndie.mostik.jvm.MainKt"

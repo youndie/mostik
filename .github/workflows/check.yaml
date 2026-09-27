@@ -1,7 +1,7 @@
 # mostik's gate. `docs/` lives inside this repository, so `make check` needs no arguments.
 #
 # From docs-bootstrap's reference workflow, with two deliberate changes: the draft gate is commented
-# out with B-10 as its address, and the build job is named as arriving with B-01 rather than being
+# out with keel's B-10 as its address, and the build job is named as arriving with keel's B-01 rather than being
 # silently absent.
 
 name: check
@@ -67,17 +67,17 @@ jobs:
 
       - run: make check
 
-      # THE DRAFT GATE, ON SINCE B-10.
+      # THE DRAFT GATE, ON SINCE keel's B-10.
       #
       # Default branch only: `status: draft` is legal in a pull request, where it means "this branch
       # will make it true", and a defect the moment it merges. It was off while the tree was
       # documentation-first and every layer document described code nobody had written; it is on now
-      # because each of them has been re-read against the code rather than flipped, and B-10 records
+      # because each of them has been re-read against the code rather than flipped, and keel's B-10 records
       # the four sentences that re-reading corrected.
       - if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: python3 scripts/docs_check.py --on-main
 
-  # THE CODE GATE. Until B-06 there was none, and a pull request that did not compile was green —
+  # THE CODE GATE. Until keel's B-06 there was none, and a pull request that did not compile was green —
   # which stopped being only a reviewer's problem when the loop began merging on green CI.
   build:
     if: github.event_name == 'push' || github.event_name == 'pull_request'

@@ -19,7 +19,7 @@ BACKLOG ?= backlog.md
 # `..` is right for this portfolio, where the checkouts sit side by side, and for CI, where the parent
 # holds one directory. It is WRONG for a clone anywhere else, and a template gets cloned anywhere
 # else: cloned to `/work`, `..` is `/`, and the report walks the entire filesystem — 25 seconds and
-# then OOM-killed on an 8 GB machine. Found by B-08, doing exactly that.
+# then OOM-killed on an 8 GB machine. Found by keel's B-08, doing exactly that.
 #
 # A clone that does not sit beside kore and sborka sets `REPOS=.` and gets a report about its own
 # paths, with the anchors that name other repositories listed as not found — which is the truth for a
@@ -45,7 +45,7 @@ check: gate report
 # defect in the documentation rather than a matter of opinion.
 #
 # NOT here: `docs_check.py --on-main`, which makes `status: draft` an error on the default branch. It
-# is off with an address — B-10 — rather than relaxed, and it is branch-specific in any case: a draft
+# is off with an address — keel's B-10 — rather than relaxed, and it is branch-specific in any case: a draft
 # is legal in a pull request, where it means "this branch will make it true".
 gate:
 	$(PY) scripts/backlog_index.py --check --docs $(DOCS) --backlog $(BACKLOG)
@@ -59,7 +59,7 @@ gate:
 # in other people's repositories. Neither is a gate.
 #
 # They were nevertheless *run* by `check`, so a report that failed failed the gate — which is the
-# opposite of what this comment claimed, and B-08 found it the way such things are found: a fresh
+# opposite of what this comment claimed, and keel's B-08 found it the way such things are found: a fresh
 # clone at `/work` made `code_anchors` scan `/`, the kernel killed it, and `make check` went red on a
 # repository whose documentation was entirely consistent. The `-` tells make to carry on; the reports
 # still print, and what they print is still read by a person.
@@ -69,7 +69,7 @@ report:
 
 # The code gate, and CI's `build` job runs exactly this. One `build` for every target the project
 # declares — which today is `jvm` and `linuxX64`; `linuxArm64` is behind `mostik.linuxArm64` and is not
-# covered by CI yet (B-15, blocked on youndie/razves#3).
+# covered by CI yet (keel's B-15, blocked on youndie/razves#3).
 #
 # What a green run here does NOT cover is in CLAUDE.md rather than assumed: a Mac cannot link an ELF,
 # so the native half of this only really runs on the Linux box.
