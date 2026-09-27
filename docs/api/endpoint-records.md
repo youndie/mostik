@@ -56,3 +56,9 @@ parent_feature: feature-publish-over-http
 
 The `error` code is contract and `detail` is not. The status set is closed: no route here answers `500`
 by design (research D2).
+
+**No answer at all is `504`'s meaning, not `503`'s.** A client whose connection closes without a response (curl's
+"Empty reply from server") must treat the record as *outcome unknown*. On the native build, about one publish in
+60 000 to 375 000 under 64 clients got no answer although its record **was** written; the JVM build showed none in
+746 799 (B-15, measured 2026-09-27). The route had answered. The response is lost below it, in Ktor's CIO on
+native.

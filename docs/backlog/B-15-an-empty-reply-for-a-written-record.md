@@ -1,7 +1,7 @@
 ---
 id: B-15
 title: "A native publish whose record was written got an empty reply"
-status: wip
+status: question
 priority: P1
 size: M
 stage: stage-4-shutdown
@@ -41,3 +41,41 @@ the listener's close, and the only reset with a record behind it.
 - AC: if it recurs, the layer that closes the connection is named, with the evidence, and the fix or the upstream
   issue exists.
 - Anchors: `ci/b-09/run.sh`, `server/src/commonMain/kotlin/io/github/youndie/mostik/publish/PublishRoutes.kt`.
+
+## Iteration 1 (2026-09-27): reproduced, located below the route, and a question
+
+All runs were on the Linux box with `ci/b-15/run.sh`: 64 clients in normal serving, no `SIGTERM` while they run, and
+every request without an answer looked up in the topic.
+
+| run | requests | no answer (curl 52) | of those, record written | the route had answered |
+|---|---|---|---|---|
+| native, 20 s | 20 790 | 1 | 1 | — |
+| native, 600 s | 730 402 | 1 | 1 | — |
+| JVM, 600 s | 746 799 | **0** | — | — |
+| native, 1 200 s, temporary `ANSWERED <key>` printed after `call.respond` | 1 447 674 | 12 | 12 | **12 of 12** |
+| native, 1 200 s, temporary fake `enqueue` (no Kafka send, 10 ms delay) | 836 639 | 14 | — (nothing sent) | — |
+
+- **The route is not where the answer is lost.** For all 12 keys, `call.respond(...)` had returned and the line after
+  it was printed. The client still got a closed connection with no bytes, 9 to 24 ms after it opened it.
+- **kafkakn's send path is not either.** With the send replaced by a fake that answers after 10 ms, the empty replies
+  stayed, at about 1 in 60 000. The producer was still constructed, its librdkafka threads connected and idle, and
+  kore's refusal interceptor was in the pipeline, passing everything. Neither is excluded by this run.
+- **The JVM build, the same code on the same CIO engine, the same curl and kernel, showed none in 746 799.** What is
+  left is Ktor's CIO and `ktor-network` on Kotlin/Native, between the handler's `respond` and the socket.
+- **The rate moves with timing.** It was about 1 in 375 000 plain, 1 in 120 000 with a `println` per request, and 1
+  in 60 000 with the fake. So this is a race, not a fixed fraction.
+- The two temporary patches were never committed, and the tree was checked clean after each.
+
+**The question, for the owner.** mostik cannot fix an engine's internals, and the upstream is Ktor, which is
+JetBrains: by the owner's rule, no LLM-made contribution goes there. So the item cannot meet its second criterion
+alone. The choices:
+
+1. **A minimal Ktor-only reproduction first:** a bare CIO server on `linuxX64`, no kore and no kafkakn, under the
+   same curl load. If it reproduces, the owner files it with Ktor himself, with that repro and the numbers above.
+2. **Accept it and say so:** the endpoint and feature documents already state what a client can meet ("no answer" is
+   "unknown", like `504`). A client that retries on no answer can write twice, exactly as on a `504`.
+3. **Prefer the JVM build where it matters,** since it showed none in 746 799. That is a deployment choice, and it
+   gives up what the native build is for.
+
+The recommendation is 1, then 2 while waiting: the repro turns "probably Ktor" into a fact, and the documents are
+already true either way.
