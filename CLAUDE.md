@@ -15,7 +15,7 @@ disagreements between clients' ledgers and the topic (B-09). Through the announc
 (kore `0.1.7`, B-14). A busy port is a one-line refusal (B-10). kore `0.1.6` carries both of those fixes, and mostik's
 workarounds are gone (B-13).
 Reset connections at shutdown are the kernel closing an accept
-queue with its listener, in a window already answering `503` (B-11). Open: the question in B-06. The repository exists only on this Mac —
+queue with its listener, in a window already answering `503` (B-11). B-06 decided that every failure after queueing stays `504`: neither arm says whether it was persisted. The repository exists only on this Mac —
 it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 

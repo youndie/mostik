@@ -44,8 +44,8 @@ gets `504` knows that nobody knows yet, and that retrying may write the record t
    timeout. `RecordNotQueuedException` becomes `429` with `Retry-After`. Any other failure here is
    `502 producer-refused`: the record was not queued, and waiting will not change that.
 4. `withTimeout(deadline − time spent in step 3) { delivery.await() }`. Metadata becomes `200`. An expiry, or
-   any failure after queueing, becomes `504 outcome-unknown`. Whether a named refusal could be `502` instead is
-   B-06.
+   any failure after queueing, becomes `504 outcome-unknown`, a refusal the broker named included: neither arm
+   tells mostik whether a failed delivery was persisted (B-06).
 
 ## 4. Code anchors
 

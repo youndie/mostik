@@ -254,6 +254,8 @@ mostik has no reason to read, and it makes every caller encode. Batches are out 
 
 `200` acknowledged · `404` topic not in the allowlist · `413` body over `MAX_RECORD_BYTES` · `429` provably
 never queued · `502` a definite refusal by the broker · `503` shutting down · `504` outcome unknown.
+**Amended by B-06 (2026-09-27):** `502` means only `producer-refused`, a refusal *before* the record was queued
+(B-05). A failure after queueing is always `504`, because neither arm says whether it was persisted (H3, settled).
 
 A `send` that throws something mostik cannot classify is `504`, not `500`, because an unclassified
 failure is exactly the case in which mostik does not know. The owner chose `504` with an explicit
@@ -347,6 +349,19 @@ in flight may have been persisted. librdkafka's `rd_kafka_message_status` (NOT /
 is expected in the bundled 2.13.0 header, which has not been read. The Java client has nothing
 equivalent. Settled by B-06. Until then `502` is only for refusals the broker names (for example
 `RECORD_TOO_LARGE`), and everything else is `504`.
+**Settled 2026-09-27 (B-06): confirmed, and it decides against `502 broker-rejected`.**
+- librdkafka does distinguish "never written" from "possibly written"
+  (`confluentinc/librdkafka@v2.13.0!/src/rdkafka.h`, `rd_kafka_msg_status_t` and `rd_kafka_message_status`).
+- kafkakn does not read it. Every native delivery failure becomes one `KafkaProduceException` with librdkafka's text
+  (`youndie/kafkakn@84008f4!/kafkakn-core/src/nativeMain/kotlin/io/github/youndie/kafkakn/KafkaProducer.native.kt`,
+  the delivery report).
+- The JVM arm passes the Java client's exception through unchanged, and the Java client has no persistence status.
+  A record that expires at `delivery.timeout.ms` may already have been sent
+  (`org.apache.kafka:kafka-clients:4.3.1!/org/apache/kafka/clients/producer/ProducerConfig.java`,
+  `DELIVERY_TIMEOUT_MS_DOC`).
+- kafkakn's contract names no portable type for a delivery failure, and its text is not contract.
+
+So mostik has nothing portable to classify by, and every failure after queueing stays `504`.
 
 **Measured under load, 2026-09-27 (B-09).** Forty rounds of `SIGTERM` at a random moment under 64 clients, 20 per
 build, with a ledger read against the topic: zero disagreements. Every `200` was there, and no `429` or `503`. The
