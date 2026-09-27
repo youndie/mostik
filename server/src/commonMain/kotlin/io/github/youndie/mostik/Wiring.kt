@@ -1,9 +1,9 @@
 package io.github.youndie.mostik
 
+import io.github.youndie.kafkakn.Delivery
 import io.github.youndie.kafkakn.KafkaProducer
 import io.github.youndie.kafkakn.ProducerConfig
 import io.github.youndie.kafkakn.ProducerRecord
-import io.github.youndie.kafkakn.RecordMetadata
 import io.github.youndie.kafkakn.kafkaProducer
 import io.github.youndie.kore.generated.KoreBuildIdentity
 import io.github.youndie.kore.health.LivenessGate
@@ -27,6 +27,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.runBlocking
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -60,7 +61,7 @@ fun startMostik(settings: MostikSettings) {
                 shutdownGracePeriod = deadlines.drain.inWholeMilliseconds
                 shutdownTimeout = deadlines.drain.inWholeMilliseconds + 5_000
             },
-            module = { mostikModule(startup, readiness, liveness, settings) { producer.send(it) } },
+            module = { mostikModule(startup, readiness, liveness, settings) { producer.enqueue(it) } },
         )
 
     // NOT `start(wait = true)`. The main thread has to be free to wait for the signal and then run
@@ -124,7 +125,7 @@ fun Application.mostikModule(
     readiness: ReadinessGate,
     liveness: LivenessGate,
     settings: MostikSettings,
-    send: suspend (ProducerRecord) -> RecordMetadata,
+    enqueue: suspend (ProducerRecord) -> Delivery,
 ) {
     // BEFORE the probes and the routes. An interceptor installed later would let calls through that
     // arrived first, and the one thing this must never miss is the first request after the announce.
@@ -133,5 +134,22 @@ fun Application.mostikModule(
     installKoreVersion(KoreBuildIdentity)
 
     install(ContentNegotiation) { json() }
-    routing { publishRoutes(settings.topics, settings.maxRecordBytes, send) }
+    routing {
+        publishRoutes(
+            topics = settings.topics,
+            maxRecordBytes = settings.maxRecordBytes,
+            deadline = settings.publishDeadlineMs.milliseconds,
+            retryAfterSeconds = retryAfterSeconds(settings.queueWaitMs),
+            enqueue = enqueue,
+        )
+    }
 }
+
+/**
+ * What `Retry-After` says on a `429`: the queue wait, in whole seconds and never less than one.
+ *
+ * A record is refused after waiting `MOSTIK_QUEUE_WAIT_MS` for room or for metadata, so a retry sooner than that
+ * asks the same full queue again. A fixed value, not one derived from how fast the queue drains: nothing here
+ * measures the drain, and a number derived from nothing would look like a measurement (research, open question 2).
+ */
+internal fun retryAfterSeconds(queueWaitMs: Int): Int = maxOf(1, (queueWaitMs + 999) / 1_000)

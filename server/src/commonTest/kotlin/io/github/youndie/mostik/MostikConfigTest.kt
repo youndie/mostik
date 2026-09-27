@@ -113,6 +113,7 @@ class MostikConfigTest {
                 "acks" to "all",
                 "ssl.ca.location" to "/etc/ca.pem",
                 "bootstrap.servers" to "127.0.0.1:9092",
+                "max.block.ms" to "1000",
             ),
             settings.producerProperties(),
         )
@@ -176,5 +177,28 @@ class MostikConfigTest {
             "MOSTIK_TOPICS",
             message = "the declared name it is a misspelling of is not named",
         )
+    }
+
+    /** B-05: the queue wait bounds step 1, and nothing is left for step 2 unless it is shorter than the deadline. */
+    @Test
+    fun `a queue wait as long as the deadline is refused and names both keys`() {
+        val env =
+            Environment.of(complete + mapOf("MOSTIK_QUEUE_WAIT_MS" to "5000", "MOSTIK_PUBLISH_DEADLINE_MS" to "5000"))
+        val refusal =
+            MostikSettings
+                .from(MostikConfig.SCHEMA.read(env), emptyMap())
+                .exceptionOrNull()
+                ?.message
+                .orEmpty()
+
+        assertContains(refusal, "MOSTIK_QUEUE_WAIT_MS (5000) must be shorter than MOSTIK_PUBLISH_DEADLINE_MS (5000)")
+    }
+
+    /** B-05: `max.block.ms` has one source, `MOSTIK_QUEUE_WAIT_MS`, and a second spelling stops the start-up. */
+    @Test
+    fun `KAFKA_MAX_BLOCK_MS is refused and names MOSTIK_QUEUE_WAIT_MS`() {
+        val refusal = MostikConfig.kafkaPassThrough(Environment.of(complete + ("KAFKA_MAX_BLOCK_MS" to "60000")))
+
+        assertContains(refusal.exceptionOrNull()?.message.orEmpty(), "max.block.ms comes from MOSTIK_QUEUE_WAIT_MS")
     }
 }

@@ -1,8 +1,9 @@
 package io.github.youndie.mostik.publish
 
+import io.github.youndie.kafkakn.Delivery
 import io.github.youndie.kafkakn.ProducerRecord
 import io.github.youndie.kafkakn.RecordHeader
-import io.github.youndie.kafkakn.RecordMetadata
+import io.github.youndie.kafkakn.RecordNotQueuedException
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receiveChannel
@@ -12,8 +13,12 @@ import io.ktor.server.routing.RoutingCall
 import io.ktor.server.routing.post
 import io.ktor.utils.io.readBuffer
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.io.readByteArray
 import kotlinx.serialization.Serializable
+import kotlin.time.Duration
+import kotlin.time.TimeSource
 
 /** The header whose value becomes the record's key. Absent means a record with no key. */
 const val RECORD_KEY_HEADER: String = "Record-Key"
@@ -61,18 +66,30 @@ class OutcomeUnknownBody(
  * **The body is bytes, never parsed.** It is the record's value exactly as sent (research D1), so nothing on
  * this path reads it as text or JSON. An empty body is an empty value, not a tombstone.
  *
- * [send] is kafkakn's `send` in production. It is a function rather than the producer so that the route's own
- * decisions — what is refused before sending, how a request becomes a record — are tested without a broker. What
- * the broker does with the record is decided by reading the topic (B-02), never by asking the producer.
+ * **The deadline is split in two, and the split is what keeps both answers true** (research §1.4, B-05):
  *
- * **Not here yet: the deadline (B-05).** `send` is unbounded, and a failure it throws is `504 outcome-unknown`:
- * research D2 answers an unclassified failure with "unknown", never with `500`, because a record whose `send`
- * threw may still have been written (research H3, B-06).
+ * 1. [enqueue] — kafkakn's `enqueue` in production — runs with **no** coroutine timeout. The producer's own
+ *    `max.block.ms` bounds it. `RecordNotQueuedException` means the record was never queued, so it is `429`, and
+ *    a retry cannot write it twice. A timeout here is the obvious code and the wrong one: on the JVM the client
+ *    does not give the thread back while it waits for room, so a cut is honoured late, by which time the record
+ *    may be queued (kafkakn B-73).
+ * 2. `await()` runs under `withTimeout` for what is left of [deadline]. An expiry is `504 outcome-unknown`: the
+ *    record is queued and goes on, and it lands if the broker answers later.
+ *
+ * Any other failure of step 1 is `502 producer-refused`: the producer refused the record before queueing it, so
+ * it was not written, and waiting will not change the answer. Any failure of step 2 is `504`, because a record
+ * whose delivery failed may still have been written (research H3, B-06).
+ *
+ * [timeSource] is the clock the time spent in step 1 is read from. It is a parameter so a test can make step 1
+ * take most of the deadline without waiting for it.
  */
 fun Route.publishRoutes(
     topics: Set<String>,
     maxRecordBytes: Int,
-    send: suspend (ProducerRecord) -> RecordMetadata,
+    deadline: Duration,
+    retryAfterSeconds: Int,
+    timeSource: TimeSource = TimeSource.Monotonic,
+    enqueue: suspend (ProducerRecord) -> Delivery,
 ) {
     post("/topics/{topic}/records") {
         val topic = call.parameters["topic"].orEmpty()
@@ -98,21 +115,40 @@ fun Route.publishRoutes(
                 key = call.request.headers[RECORD_KEY_HEADER]?.encodeToByteArray(),
                 headers = call.recordHeaders(),
             )
+
+        val started = timeSource.markNow()
+        val delivery =
+            try {
+                enqueue(record)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (notQueued: RecordNotQueuedException) {
+                call.response.headers.append(HttpHeaders.RetryAfter, retryAfterSeconds.toString())
+                call.respondError(
+                    HttpStatusCode.TooManyRequests,
+                    "not-queued",
+                    "the record was not queued, and nothing was written: ${notQueued.message}",
+                )
+                return@post
+            } catch (refused: Exception) {
+                call.respondError(
+                    HttpStatusCode.BadGateway,
+                    "producer-refused",
+                    "the producer refused the record before queueing it, and nothing was written: ${refused.message}",
+                )
+                return@post
+            }
+
         val metadata =
             try {
-                send(record)
+                withTimeout(deadline - started.elapsedNow()) { delivery.await() }
+            } catch (expired: TimeoutCancellationException) {
+                call.respondOutcomeUnknown("the deadline of $deadline passed after the record was queued")
+                return@post
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                call.respond(
-                    HttpStatusCode.GatewayTimeout,
-                    OutcomeUnknownBody(
-                        error = "outcome-unknown",
-                        detail = "the producer failed after the record was handed to it: ${failure.message}",
-                        outcome = "unknown",
-                        retrySafe = false,
-                    ),
-                )
+                call.respondOutcomeUnknown("the delivery failed after the record was queued: ${failure.message}")
                 return@post
             }
         call.respond(PublishedRecord(metadata.topic, metadata.partition, metadata.offset, metadata.timestamp))
@@ -154,3 +190,9 @@ private suspend fun RoutingCall.respondError(
     error: String,
     detail: String,
 ) = respond(status, ErrorBody(error, detail))
+
+private suspend fun RoutingCall.respondOutcomeUnknown(detail: String) =
+    respond(
+        HttpStatusCode.GatewayTimeout,
+        OutcomeUnknownBody(error = "outcome-unknown", detail = detail, outcome = "unknown", retrySafe = false),
+    )

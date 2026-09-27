@@ -27,6 +27,13 @@ object MostikConfig {
     /** The bound on one publish, in milliseconds. Enforced by B-05; read and checked from B-01 on. */
     val PUBLISH_DEADLINE_MS: ConfigKey<Int> = ConfigKey.int("PUBLISH_DEADLINE_MS", default = 5_000)
 
+    /**
+     * How long `enqueue` may wait for room in the queue or for the topic's metadata: the producer's `max.block.ms`
+     * (B-05). A record not queued within it is `429`. It must be shorter than the deadline, or nothing is left for
+     * the broker's answer.
+     */
+    val QUEUE_WAIT_MS: ConfigKey<Int> = ConfigKey.int("QUEUE_WAIT_MS", default = 1_000)
+
     /** A larger body is `413` before the producer is called (B-03). One MiB, Kafka's own default message size. */
     val MAX_RECORD_BYTES: ConfigKey<Int> = ConfigKey.int("MAX_RECORD_BYTES", default = 1_048_576)
 
@@ -45,6 +52,7 @@ object MostikConfig {
                     BOOTSTRAP_SERVERS,
                     TOPICS,
                     PUBLISH_DEADLINE_MS,
+                    QUEUE_WAIT_MS,
                     MAX_RECORD_BYTES,
                     TRACY_ENDPOINT,
                     TRACY_KEY,
@@ -59,7 +67,11 @@ object MostikConfig {
      * Producer keys mostik sets itself. Taking them from `KAFKA_*` as well would give one value two sources, and
      * the day they disagree nothing says which one won.
      */
-    private val OWNED: Map<String, String> = mapOf("bootstrap.servers" to "MOSTIK_BOOTSTRAP_SERVERS")
+    private val OWNED: Map<String, String> =
+        mapOf(
+            "bootstrap.servers" to "MOSTIK_BOOTSTRAP_SERVERS",
+            "max.block.ms" to "MOSTIK_QUEUE_WAIT_MS",
+        )
 
     /**
      * Every `KAFKA_*` variable as the producer key it names: `KAFKA_SSL_CA_LOCATION` → `ssl.ca.location`.
@@ -116,12 +128,14 @@ class MostikSettings(
     val bootstrapServers: String,
     val topics: Set<String>,
     val publishDeadlineMs: Int,
+    val queueWaitMs: Int,
     val maxRecordBytes: Int,
     val observed: Boolean,
     val producerKeys: Map<String, String>,
 ) {
     /** The properties the producer is constructed with: the pass-through first, then what mostik owns. */
-    fun producerProperties(): Map<String, String> = producerKeys + ("bootstrap.servers" to bootstrapServers)
+    fun producerProperties(): Map<String, String> =
+        producerKeys + mapOf("bootstrap.servers" to bootstrapServers, "max.block.ms" to queueWaitMs.toString())
 
     /**
      * One line for `docker logs`, naming what was configured. Producer keys are listed by name only: some of them
@@ -129,7 +143,7 @@ class MostikSettings(
      */
     fun describe(): String =
         "configured: port=$port bootstrap=$bootstrapServers topics=${topics.sorted().joinToString(",")} " +
-            "deadline=${publishDeadlineMs}ms maxRecord=${maxRecordBytes}B " +
+            "deadline=${publishDeadlineMs}ms queueWait=${queueWaitMs}ms maxRecord=${maxRecordBytes}B " +
             "producerKeys=${producerKeys.keys.sorted()} observability=${if (observed) "on" else "off"}"
 
     companion object {
@@ -155,6 +169,15 @@ class MostikSettings(
                     if (configuration[MostikConfig.PUBLISH_DEADLINE_MS] <= 0) {
                         add("MOSTIK_PUBLISH_DEADLINE_MS must be positive")
                     }
+                    val deadline = configuration[MostikConfig.PUBLISH_DEADLINE_MS]
+                    val queueWait = configuration[MostikConfig.QUEUE_WAIT_MS]
+                    if (queueWait <= 0) add("MOSTIK_QUEUE_WAIT_MS must be positive")
+                    if (queueWait >= deadline) {
+                        add(
+                            "MOSTIK_QUEUE_WAIT_MS ($queueWait) must be shorter than MOSTIK_PUBLISH_DEADLINE_MS " +
+                                "($deadline): nothing would be left of the deadline for the broker's answer",
+                        )
+                    }
                     if (configuration[MostikConfig.MAX_RECORD_BYTES] <= 0) {
                         add("MOSTIK_MAX_RECORD_BYTES must be positive")
                     }
@@ -166,6 +189,7 @@ class MostikSettings(
                     bootstrapServers = configuration[MostikConfig.BOOTSTRAP_SERVERS],
                     topics = topics,
                     publishDeadlineMs = configuration[MostikConfig.PUBLISH_DEADLINE_MS],
+                    queueWaitMs = configuration[MostikConfig.QUEUE_WAIT_MS],
                     maxRecordBytes = configuration[MostikConfig.MAX_RECORD_BYTES],
                     observed = configuration[MostikConfig.TRACY_ENDPOINT] != null,
                     producerKeys = producerKeys,
