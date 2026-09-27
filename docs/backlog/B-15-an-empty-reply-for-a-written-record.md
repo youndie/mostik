@@ -1,7 +1,7 @@
 ---
 id: B-15
 title: "A native publish whose record was written got an empty reply"
-status: wip
+status: question
 priority: P1
 size: M
 stage: stage-4-shutdown
@@ -79,3 +79,29 @@ alone. The choices:
 
 The recommendation is 1, then 2 while waiting: the repro turns "probably Ktor" into a fact, and the documents are
 already true either way.
+
+## Iteration 2 (2026-09-27): the owner chose 1, and the minimal reproduction is Ktor's alone
+
+`ci/b-15/repro/` is a standalone build: Kotlin 2.4.20 and Ktor 3.6.0 CIO, with no kore, no kafkakn and no content
+negotiation. It has one route: read the body, `delay(10)`, `respondText` a small JSON string. `load.sh` is the same
+64-client load as `ci/b-15/run.sh`. The same source compiles for `linuxX64` and for the JVM.
+
+| target | requests in 20 min | empty replies (curl 52) |
+|---|---|---|
+| linuxX64, run 1 | 1 575 338 | 11 |
+| linuxX64, run 2 | 1 557 766 | 16 |
+| linuxX64, run 3 (the load script below, exactly as written) | 1 639 097 | 13 |
+| JVM, same source (Java 25) | 1 548 235 | **0** |
+
+- **It is Ktor's CIO on Kotlin/Native, and nothing of mostik's.** Everything the first iteration could not exclude
+  is absent here: kore's interceptor, kafkakn's idle producer, content negotiation. The JVM control of the same
+  code shows none.
+- The host was Ubuntu 24.04 on WSL2 (kernel 6.6.87.2), glibc 2.39, curl 8.5.0.
+- **The upstream report is drafted for the owner to file**, because Ktor is JetBrains and no LLM-made contribution
+  goes there. The draft carries the reproduction, the load as a copy-paste script (`ci/b-15/repro/issue-snippet.sh`,
+  run as written before it was handed over: run 3) and the table above, and it names no project of this portfolio.
+- **What stays true in mostik whatever Ktor does:** a client reads "no answer" as "unknown", the same as `504`. The
+  endpoint and feature documents already say so.
+
+**Still a question, now a narrower one:** the item's second criterion is met when the owner files the report.
+Then this item records its address and closes.
