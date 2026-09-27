@@ -1,5 +1,6 @@
 package io.github.youndie.mostik.jvm
 
+import io.github.youndie.mostik.keepKtorOutOfTheShutdown
 import io.github.youndie.mostik.mostikMain
 
 /**
@@ -9,4 +10,8 @@ import io.github.youndie.mostik.mostikMain
  * — which cannot see a multiplatform module — has a class to name. Anything that grows here has
  * stopped being template renaming and belongs in `:server`, where both targets can reach it.
  */
-fun main(args: Array<String>): Unit = mostikMain(args)
+fun main(args: Array<String>) {
+    // First, before the server exists: Ktor's JVM shutdown hook would stop the engine at SIGTERM (kore#90, B-12).
+    keepKtorOutOfTheShutdown()
+    mostikMain(args)
+}
