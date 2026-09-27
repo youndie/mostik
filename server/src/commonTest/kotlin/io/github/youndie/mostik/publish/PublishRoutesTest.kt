@@ -50,6 +50,7 @@ class PublishRoutesTest {
             topics = setOf("orders", "payments"),
             publishDeadlineMs = 5_000,
             queueWaitMs = 1_000,
+            drainMs = 15_000,
             maxRecordBytes = 64,
             observed = false,
             producerKeys = emptyMap(),

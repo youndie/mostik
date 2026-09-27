@@ -288,6 +288,13 @@ kore's configuration refuses a missing value the same way, so this is one more r
 The reason is §1.6, consequence 2. The same check covers the queue wait: `MOSTIK_QUEUE_WAIT_MS <
 MOSTIK_PUBLISH_DEADLINE_MS`, or step 2 of §1.4's split has no time left.
 
+**Built in B-07, with two decisions the text above left open.** The margin is 1 000 ms: B-05 measured a `504`
+written 11 to 22 ms past its deadline, so a second is wide rather than tight. And the drain became a mostik
+setting, `MOSTIK_DRAIN_MS`, because kore reads it from code only, while the grace period belongs to the
+deployment: `docker stop` gives 10 s, and kore's default deadlines add up to 29 s
+(`youndie/kore@47825a6!/kore-core/src/commonMain/kotlin/io/github/youndie/kore/lifecycle/ShutdownPlan.kt`,
+`gracePeriod`). A drain setting that mostik did not check would be the same defect one layer up.
+
 ### D7. The kafkakn changes land in kafkakn
 
 mostik does not wrap `send` in a private notion of "queued". The distinction belongs to the library,

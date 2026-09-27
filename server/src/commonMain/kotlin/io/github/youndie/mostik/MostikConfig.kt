@@ -34,6 +34,15 @@ object MostikConfig {
      */
     val QUEUE_WAIT_MS: ConfigKey<Int> = ConfigKey.int("QUEUE_WAIT_MS", default = 1_000)
 
+    /**
+     * How long the engine drains on `SIGTERM`: kore's `ShutdownDeadlines.drain`, whose default this repeats (B-07).
+     *
+     * A key because the grace period is the deployment's, not kore's: `docker stop` gives 10 s, and kore's default
+     * deadlines add up to 29 s (kore's own KDoc on `gracePeriod`). A deployment that shrinks the drain to fit is
+     * exactly the one the budget check below exists for.
+     */
+    val DRAIN_MS: ConfigKey<Int> = ConfigKey.int("DRAIN_MS", default = 15_000)
+
     /** A larger body is `413` before the producer is called (B-03). One MiB, Kafka's own default message size. */
     val MAX_RECORD_BYTES: ConfigKey<Int> = ConfigKey.int("MAX_RECORD_BYTES", default = 1_048_576)
 
@@ -53,6 +62,7 @@ object MostikConfig {
                     TOPICS,
                     PUBLISH_DEADLINE_MS,
                     QUEUE_WAIT_MS,
+                    DRAIN_MS,
                     MAX_RECORD_BYTES,
                     TRACY_ENDPOINT,
                     TRACY_KEY,
@@ -62,6 +72,12 @@ object MostikConfig {
 
     /** The prefix of the producer keys that pass through, outside the schema. */
     const val KAFKA_PREFIX: String = "KAFKA_"
+
+    /**
+     * How much longer than the deadline the drain has to be. A request's answer is written after its deadline
+     * expires, and B-05 measured that at 11 to 22 ms past it, so a second is a wide margin, not a tight one.
+     */
+    const val DRAIN_MARGIN_MS: Int = 1_000
 
     /**
      * Producer keys mostik sets itself. Taking them from `KAFKA_*` as well would give one value two sources, and
@@ -129,6 +145,7 @@ class MostikSettings(
     val topics: Set<String>,
     val publishDeadlineMs: Int,
     val queueWaitMs: Int,
+    val drainMs: Int,
     val maxRecordBytes: Int,
     val observed: Boolean,
     val producerKeys: Map<String, String>,
@@ -143,7 +160,8 @@ class MostikSettings(
      */
     fun describe(): String =
         "configured: port=$port bootstrap=$bootstrapServers topics=${topics.sorted().joinToString(",")} " +
-            "deadline=${publishDeadlineMs}ms queueWait=${queueWaitMs}ms maxRecord=${maxRecordBytes}B " +
+            "deadline=${publishDeadlineMs}ms queueWait=${queueWaitMs}ms drain=${drainMs}ms " +
+            "maxRecord=${maxRecordBytes}B " +
             "producerKeys=${producerKeys.keys.sorted()} observability=${if (observed) "on" else "off"}"
 
     companion object {
@@ -178,6 +196,16 @@ class MostikSettings(
                                 "($deadline): nothing would be left of the deadline for the broker's answer",
                         )
                     }
+                    // A request in flight at SIGTERM needs up to the deadline to get a real answer. A shorter drain
+                    // cuts it, and the client gets a reset connection instead of a status (research D6, B-07).
+                    val drain = configuration[MostikConfig.DRAIN_MS]
+                    if (drain < deadline + MostikConfig.DRAIN_MARGIN_MS) {
+                        add(
+                            "MOSTIK_DRAIN_MS ($drain) must be at least MOSTIK_PUBLISH_DEADLINE_MS ($deadline) + " +
+                                "${MostikConfig.DRAIN_MARGIN_MS} ms: a request in flight at SIGTERM would be cut " +
+                                "before its answer",
+                        )
+                    }
                     if (configuration[MostikConfig.MAX_RECORD_BYTES] <= 0) {
                         add("MOSTIK_MAX_RECORD_BYTES must be positive")
                     }
@@ -190,6 +218,7 @@ class MostikSettings(
                     topics = topics,
                     publishDeadlineMs = configuration[MostikConfig.PUBLISH_DEADLINE_MS],
                     queueWaitMs = configuration[MostikConfig.QUEUE_WAIT_MS],
+                    drainMs = configuration[MostikConfig.DRAIN_MS],
                     maxRecordBytes = configuration[MostikConfig.MAX_RECORD_BYTES],
                     observed = configuration[MostikConfig.TRACY_ENDPOINT] != null,
                     producerKeys = producerKeys,

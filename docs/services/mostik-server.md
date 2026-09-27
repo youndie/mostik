@@ -13,7 +13,7 @@ publishes: [container image with the native binary and the JVM distribution]
 # mostik server
 
 > Read against the code on 2026-09-27 (B-03). What is not built yet is marked *target* with the item that
-> builds it; the shutdown checks (B-07, B-08, B-09) are the largest of those.
+> builds it; the shutdown under load (B-08, B-09) is the largest of those.
 
 ## 1. Responsibility
 
@@ -66,7 +66,9 @@ number derived from nothing (research, open question 2).
 
 **The shutdown order is keel's, with the producer in the SQLite pool's slot** (research §1.6): not ready,
 then refusal, then the engine drain, then `producer.close()` as a `ShutdownParticipant`. The drain has to
-outlast the deadline, and the start-up will refuse a configuration where it does not (*target*, B-07).
+outlast the deadline plus a 1 000 ms margin, and the start-up refuses a configuration where it does not
+(B-07). The drain is `MOSTIK_DRAIN_MS`, handed to kore's `ShutdownDeadlines(drain = …)`; the other deadlines
+stay kore's defaults.
 
 **The route takes `send` as a function**, not the producer, so its own decisions are tested without a broker
 (`PublishRoutesTest`). What the broker did is only ever read out of the topic (`ci/b-03/run.sh`).
@@ -109,6 +111,7 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
 | `MOSTIK_BOOTSTRAP_SERVERS` | Kafka's `bootstrap.servers` | yes |
 | `MOSTIK_TOPICS` | the allowlist, comma-separated; any other topic is `404` | yes |
 | `MOSTIK_PUBLISH_DEADLINE_MS` | the bound on one publish; default `5000`. Enforced by the route (B-05) | no |
+| `MOSTIK_DRAIN_MS` | how long the engine drains on `SIGTERM`; default `15000`, kore's own. Must be at least the deadline plus 1 000 ms. Shrink it, and the deadline with it, where the grace period is short: `docker stop` gives 10 s | no |
 | `MOSTIK_QUEUE_WAIT_MS` | becomes the producer's `max.block.ms`, which bounds `enqueue`; must be shorter than the deadline; default `1000`. It is also `Retry-After` on a `429`, in seconds | no |
 | `MOSTIK_MAX_RECORD_BYTES` | a larger body is `413` before `send`; default `1048576` | no |
 | `MOSTIK_TRACY_ENDPOINT`, `MOSTIK_TRACY_KEY` | observability, both or neither, as in keel | no |

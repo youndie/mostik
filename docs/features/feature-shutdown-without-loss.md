@@ -31,8 +31,8 @@ is new here is that the drain has to outlast the publish deadline.
   `installShutdownRefusal`, tested in kore; mostik's run of it under load is B-09.
 * *Target, B-09:* a request in flight when the signal lands gets a real answer (`200`, `429` or `504`),
   never a reset connection.
-* *Target, B-07:* `drain ≥ MOSTIK_PUBLISH_DEADLINE_MS + margin`, or the service refuses to start and names
-  both values (research D6). **Not checked today.**
+* `MOSTIK_DRAIN_MS ≥ MOSTIK_PUBLISH_DEADLINE_MS + 1 000 ms`, or the service refuses to start and names both
+  values (research D6, B-07).
 * *Target, B-08:* `close` ends within the grace period, or how long it takes is measured and routed to
   kafkakn. **Seen on native in B-04: 300 200 ms** for one record queued against an unreachable broker.
 
@@ -40,7 +40,9 @@ is new here is that the drain has to outlast the publish deadline.
 
 1. `SIGTERM`. kore flips readiness (`/health/ready` → `503`) and waits `preDrainWait` (5 s by default).
 2. The refusal starts: every path but the probes answers kore's `503`.
-3. The engine drains for up to `drain` (15 s by default). Each request in it is bounded by the deadline
+3. The engine drains for up to `MOSTIK_DRAIN_MS` (15 s by default, kore's own). **Not a ceiling:** while any
+   connection is open, CIO spends it in full: 15.0 s at the default and 6.0 s at 6 000 ms, measured with one
+   idle connection (B-07). Each request in it is bounded by the deadline
    (B-05).
 4. `producer.close()` flushes and releases, as the `ShutdownParticipant`.
 
@@ -52,13 +54,13 @@ Steps 1, 2 and 4 are what both builds printed on `SIGTERM` in B-01: `ANNOUNCE` 5
 | Service | Code |
 |---|---|
 | mostik-server | `server/src/commonMain/kotlin/io/github/youndie/mostik/Wiring.kt` — the sequence, and the producer as its participant |
-| mostik-server | `server/src/commonMain/kotlin/io/github/youndie/mostik/MostikConfig.kt` — where B-07's drain-budget check goes |
+| mostik-server | `server/src/commonMain/kotlin/io/github/youndie/mostik/MostikConfig.kt` — `DRAIN_MS` and the drain-budget check (B-07) |
 
 The oracle for the scenarios below is B-09's client-side ledger read against the topic. It is not written yet.
 
 ## 5. Scenarios (BDD / test cases)
 
-All *target*: B-09 runs the first two, and B-07 the third.
+The first two are *target*: B-09 runs them. The third is built (B-07).
 
 ### Scenario: the drain covers the deadline
 * **Given:** 64 concurrent publishers, each keeping a ledger of key → status, and a broker that is up
@@ -73,9 +75,12 @@ All *target*: B-09 runs the first two, and B-07 the third.
 * **And:** the process ends itself within the grace period, or the time is recorded in B-08
 
 ### Scenario: misconfigured budget
-* **Given:** a drain of 3 s and `MOSTIK_PUBLISH_DEADLINE_MS=5000`
+* **Given:** `MOSTIK_DRAIN_MS=3000` and `MOSTIK_PUBLISH_DEADLINE_MS=5000`
 * **When:** the service starts
 * **Then:** it exits `1`, and the message names `MOSTIK_PUBLISH_DEADLINE_MS` and the drain
+* **Automated:** `MostikConfigTest::a drain shorter than the deadline plus its margin is refused and names both keys`;
+  on both binaries on 2026-09-27: *"MOSTIK_DRAIN_MS (3000) must be at least MOSTIK_PUBLISH_DEADLINE_MS (5000) +
+  1000 ms: a request in flight at SIGTERM would be cut before its answer"*, exit 1
 
 ## 6. Out of scope
 

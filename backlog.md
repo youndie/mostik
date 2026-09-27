@@ -18,8 +18,7 @@ way is in [research](docs/research/research-architecture.md).
 **The route publishes under a deadline.** B-01 made the skeleton from keel's template. B-02 added the broker
 and the reader. B-03 added `POST /topics/{topic}/records`: `200` with the offset the broker gave, and `404` and
 `413` before the producer. B-05 added the deadline: `429` when the record was provably never queued, and `504`
-when the deadline wins after queueing. Every answer was checked by reading the topic, on both builds. What is
-left is the shutdown: B-07, B-08, B-09.
+when the deadline wins after queueing. Every answer was checked by reading the topic, on both builds. B-07 refuses a drain shorter than the deadline. What is left is the shutdown under load: B-08 and B-09.
 
 **Part of this backlog waited on another repository, and no longer does.** The deadline's answers rested on
 kafkakn B-73, B-74 and B-76. All three are published in kafkakn `0.1.0.11`, which B-04 pins.
@@ -55,12 +54,12 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-07](docs/backlog/B-07-refuse-a-drain-shorter-than-the-deadline.md) `[~]` | Refuse to start when the drain budget is shorter than the publish deadline | P1 | S | B-05 |
 | [B-08](docs/backlog/B-08-close-with-the-broker-gone.md) `[ ]` | How long close takes with the broker gone, measured against the grace period | P1 | S | B-05 |
 | [B-09](docs/backlog/B-09-the-sigterm-oracle.md) `[ ]` | The SIGTERM oracle: every answer a client got agrees with the topic | P1 | M | B-07, B-08 |
 | [B-06](docs/backlog/B-06-does-a-thrown-send-mean-not-written.md) `[?]` | Does a thrown send mean the record was not written? | P2 | S | B-04 |
+| [B-10](docs/backlog/B-10-a-busy-port-is-a-refusal-not-an-abort.md) `[ ]` | A busy port stops the start-up with a sentence, not an abort | P2 | S | - |
 
-## Closed (5)
+## Closed (6)
 
 **From keel to a bridge that builds**
 
@@ -75,5 +74,9 @@ hypothesis was confirmed or refuted.
 
 - [B-04](docs/backlog/B-04-take-kafkakn-with-cancellation-in-its-contract.md) `[x]` - Take a kafkakn snapshot whose contract says what a cancelled send leaves behind
 - [B-05](docs/backlog/B-05-the-deadline-429-or-504.md) `[x]` - The publish deadline: 429 when provably never queued, 504 outcome-unknown otherwise
+
+**`SIGTERM` under load**
+
+- [B-07](docs/backlog/B-07-refuse-a-drain-shorter-than-the-deadline.md) `[x]` - Refuse to start when the drain budget is shorter than the publish deadline
 
 <!-- END INDEX -->

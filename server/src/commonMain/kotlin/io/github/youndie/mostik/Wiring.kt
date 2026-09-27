@@ -39,7 +39,9 @@ fun startMostik(settings: MostikSettings) {
     val startup = StartupGate()
     val readiness = ReadinessGate()
     val liveness = LivenessGate()
-    val deadlines = ShutdownDeadlines()
+    // The drain is the deployment's (MOSTIK_DRAIN_MS), and the start-up has already refused one shorter than the
+    // publish deadline plus its margin (B-07). The other deadlines stay kore's.
+    val deadlines = ShutdownDeadlines(drain = settings.drainMs.milliseconds)
 
     // THE PRODUCER IS BUILT BEFORE ANYTHING SERVES. Construction is where kafkakn refuses a key neither
     // of its arms honours, so a misspelt `KAFKA_*` is a process that does not start rather than a

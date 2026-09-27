@@ -9,7 +9,8 @@ Kotlin/Native binary and a JVM distribution, one image) and publishing through
 **State (2026-09-27): the route publishes under a deadline.** `POST /topics/{topic}/records` answers `200`
 with the offset the broker gave (B-03), `429` for a record provably never queued, and `504 outcome-unknown`
 when the deadline wins after queueing (B-05). All of it is checked by reading the topic, on both builds.
-kafkakn is pinned at `0.1.0.11` (B-04). What is left is the shutdown checks: B-07, B-08, B-09. The repository exists only on this Mac —
+kafkakn is pinned at `0.1.0.11` (B-04). The drain budget is checked at start-up (B-07). What is left is the shutdown under
+load: B-08 and B-09. The repository exists only on this Mac —
 it is not on GitHub yet; the Linux box has it as the mutagen session `mostik`. This sentence is dated so
 that its age is visible; `backlog.md` and the build are what cannot go stale.
 

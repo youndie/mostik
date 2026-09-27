@@ -201,4 +201,26 @@ class MostikConfigTest {
 
         assertContains(refusal.exceptionOrNull()?.message.orEmpty(), "max.block.ms comes from MOSTIK_QUEUE_WAIT_MS")
     }
+
+    /** B-07: the drain has to outlast the deadline, or a request in flight at SIGTERM loses its answer. */
+    @Test
+    fun `a drain shorter than the deadline plus its margin is refused and names both keys`() {
+        val env =
+            Environment.of(complete + mapOf("MOSTIK_DRAIN_MS" to "3000", "MOSTIK_PUBLISH_DEADLINE_MS" to "5000"))
+        val refusal =
+            MostikSettings
+                .from(MostikConfig.SCHEMA.read(env), emptyMap())
+                .exceptionOrNull()
+                ?.message
+                .orEmpty()
+
+        assertContains(refusal, "MOSTIK_DRAIN_MS (3000) must be at least MOSTIK_PUBLISH_DEADLINE_MS (5000) + 1000 ms")
+    }
+
+    /** B-07's other half: kore's default drain with the default deadline starts, and so does the margin exactly. */
+    @Test
+    fun `the default drain and a drain of exactly deadline plus margin both start`() {
+        assertEquals(15_000, settings(complete).drainMs)
+        assertEquals(6_000, settings(complete + mapOf("MOSTIK_DRAIN_MS" to "6000")).drainMs)
+    }
 }
