@@ -135,6 +135,10 @@ Read under the prefix `MOSTIK`. kore refuses an undeclared `MOSTIK_*` variable (
   stop listening 1 ms after `SIGTERM`. `keepKtorOutOfTheShutdown()` (server `jvmMain`) sets
   `io.ktor.server.engine.ShutdownHook=false` as the first line of every JVM `main`. It is a workaround with an
   address, youndie/kore#90, reproduced on keel itself (B-12).
+- **A busy port is checked before the server binds it.** CIO binds inside a coroutine of its own, and on
+  Kotlin/Native an exception there aborts the process with `SIGABRT`. mostik binds `MOSTIK_PORT` once itself and
+  closes it, so a busy port is one sentence and exit 1 on both builds. Another process can still take the port in
+  the moment between, so this narrows the problem and does not close it (B-10, youndie/keel#49).
 - **A few requests at shutdown get a reset connection**: 1 to 9 per round under 64 clients, on both builds, and
   no written record behind any of them (B-11).
 - **Record headers arrive grouped by name**, not in the order they were sent (endpoint-records, measured).
