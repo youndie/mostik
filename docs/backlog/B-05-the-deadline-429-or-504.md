@@ -1,7 +1,7 @@
 ---
 id: B-05
 title: "The publish deadline: 429 when provably never queued, 504 outcome-unknown otherwise"
-status: open
+status: wip
 priority: P0
 size: M
 stage: stage-3-bounded-wait
