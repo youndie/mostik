@@ -1,7 +1,7 @@
 ---
 id: B-11
 title: "A few requests at shutdown get a reset connection instead of an answer"
-status: open
+status: wip
 priority: P2
 size: S
 stage: stage-4-shutdown
