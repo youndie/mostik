@@ -57,7 +57,7 @@ hypothesis was confirmed or refuted.
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
 | [B-06](docs/backlog/B-06-does-a-thrown-send-mean-not-written.md) `[?]` | Does a thrown send mean the record was not written? | P2 | S | B-04 |
-| [B-10](docs/backlog/B-10-a-busy-port-is-a-refusal-not-an-abort.md) `[ ]` | A busy port stops the start-up with a sentence, not an abort | P2 | S | - |
+| [B-10](docs/backlog/B-10-a-busy-port-is-a-refusal-not-an-abort.md) `[~]` | A busy port stops the start-up with a sentence, not an abort | P2 | S | - |
 | [B-11](docs/backlog/B-11-a-connection-reset-at-shutdown.md) `[ ]` | A few requests at shutdown get a reset connection instead of an answer | P2 | S | - |
 
 ## Closed (9)

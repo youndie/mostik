@@ -1,7 +1,7 @@
 ---
 id: B-10
 title: "A busy port stops the start-up with a sentence, not an abort"
-status: open
+status: wip
 priority: P2
 size: S
 stage: stage-1-skeleton
