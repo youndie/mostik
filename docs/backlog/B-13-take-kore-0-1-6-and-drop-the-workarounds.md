@@ -1,7 +1,7 @@
 ---
 id: B-13
 title: "Take kore 0.1.6 and replace both local workarounds with kore's fixes"
-status: open
+status: wip
 priority: P1
 size: S
 stage: stage-5-kore-upstream

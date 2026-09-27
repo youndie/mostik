@@ -58,7 +58,7 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-13](docs/backlog/B-13-take-kore-0-1-6-and-drop-the-workarounds.md) `[ ]` | Take kore 0.1.6 and replace both local workarounds with kore's fixes | P1 | S | - |
+| [B-13](docs/backlog/B-13-take-kore-0-1-6-and-drop-the-workarounds.md) `[~]` | Take kore 0.1.6 and replace both local workarounds with kore's fixes | P1 | S | - |
 | [B-14](docs/backlog/B-14-take-kore-0-1-7-and-remeasure-the-shutdown.md) `[ ]` | Take kore 0.1.7: the refusal opens at the drain, and the shutdown is measured again | P1 | M | B-13 |
 | [B-06](docs/backlog/B-06-does-a-thrown-send-mean-not-written.md) `[?]` | Does a thrown send mean the record was not written? | P2 | S | B-04 |
 
