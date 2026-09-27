@@ -57,3 +57,10 @@ topic of its own, 64 clients, and `SIGTERM` at a random 3 to 8 s. The deadline w
 - **Found: the JVM build stops listening at `SIGTERM`.** Probed every ~220 ms: native answers `503` for 4.9 s, and
   the JVM build refuses connections from 1 ms on. Filed as
   [B-12](B-12-the-jvm-build-stops-listening-at-sigterm.md). It is likely keel's or kore's, not mostik's.
+
+## Amended (2026-09-27, B-14)
+
+The counts above are kore `0.1.6`'s, where the announce answered `503`. Under `0.1.7` the announce serves, and the
+same 20 rounds per build gave: native 4 400 to 11 100 × `200` and 0 to 51 × `503` per round; JVM 3 700 to 16 800 ×
+`200` and 0 to 73 × `503`. There were zero disagreements again. The control moved: 192 × `504` per native round,
+and `504`s with `429`s on the JVM.

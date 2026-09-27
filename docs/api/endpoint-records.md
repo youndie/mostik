@@ -53,7 +53,7 @@ parent_feature: feature-publish-over-http
 |---|---|---|
 | `{topic}` not in `MOSTIK_TOPICS` | `404` | `{"error": "topic-not-found", "detail": …}`; the producer is never called |
 | body over `MOSTIK_MAX_RECORD_BYTES` | `413` | `{"error": "record-too-large", "detail": …}`; the producer is never called |
-| the service is shutting down | `503` | kore's plain text `shutting down\n`, with `Connection: close` — **not** the JSON shape (research §1.6) |
+| the service is draining (not during the announce, when it still serves) | `503` | kore's plain text `shutting down\n`, with `Connection: close` — **not** the JSON shape (research §1.6) |
 
 The `error` code is contract and `detail` is not. The status set is closed: no route here answers `500`
 by design (research D2).

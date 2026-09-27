@@ -59,3 +59,9 @@ was sent. That is how the mechanism was read. It ran 5 rounds per build on the L
   signal.
 - **No disagreement in these 10 rounds either:** every `200` present, no `429` or `503` present, every exit the
   process's own.
+
+## Amended (2026-09-27, B-14)
+
+Under kore `0.1.7` the listener still closes at the drain, now after an announce that serves. 40 rounds gave 59
+resets: 30 native and 29 JVM, in 30 of 40 rounds. 58 of them were within 122 ms of the close, none with a record,
+so the mechanism above holds. The 59th was not at the close and did carry a record: B-15.

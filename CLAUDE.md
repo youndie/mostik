@@ -11,7 +11,8 @@ with the offset the broker gave (B-03), `429` for a record provably never queued
 when the deadline wins after queueing (B-05). All of it is checked by reading the topic, on both builds.
 kafkakn is pinned at `0.1.0.11` (B-04). The drain budget is checked at start-up (B-07). `close` is cut by kore at 3 s when the broker is gone,
 and the process still exits within its grace period (B-08). Under load, 40 rounds of `SIGTERM` gave zero
-disagreements between clients' ledgers and the topic (B-09). Both builds now answer `503` through the announce (B-12). A busy port is a one-line refusal (B-10). kore `0.1.6` carries both of those fixes, and mostik's
+disagreements between clients' ledgers and the topic (B-09). Through the announce both builds go on serving while readiness says `503`, and the refusal opens at the drain
+(kore `0.1.7`, B-14). A busy port is a one-line refusal (B-10). kore `0.1.6` carries both of those fixes, and mostik's
 workarounds are gone (B-13).
 Reset connections at shutdown are the kernel closing an accept
 queue with its listener, in a window already answering `503` (B-11). Open: the question in B-06. The repository exists only on this Mac —

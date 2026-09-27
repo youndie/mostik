@@ -40,4 +40,4 @@ parent_feature: feature-shutdown-without-loss
 
 | Condition | Status | Body |
 |---|---|---|
-| any non-served path once shutdown has begun | `503` | `shutting down\n`, `Connection: close` |
+| any non-served path once the drain has begun (kore `0.1.7`; under `0.1.6`, from the announce) | `503` | `shutting down\n`, `Connection: close` |

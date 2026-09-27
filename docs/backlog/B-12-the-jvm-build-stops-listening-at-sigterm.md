@@ -67,3 +67,9 @@ connection is a request that was never sent.
 
 The workaround is gone. kore `0.1.6` switches Ktor's JVM hook off in `startForKore()` (kore #92, closing kore#90),
 and mostik starts the server with it. `ci/b-12/run.sh` passes on both builds as before.
+
+## Amended (2026-09-27, B-14)
+
+"Answers `503` through the announce" was kore `0.1.6`'s behaviour. Under `0.1.7` readiness is `503` and a publish is
+still `200` through the announce, and `ci/b-12/run.sh` now expects that. It fails against the `0.1.6` build: a publish
+there was `503` from 2 ms. The finding of this item stands: the JVM build keeps its listener through the announce.

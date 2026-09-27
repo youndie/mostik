@@ -19,7 +19,8 @@ way is in [research](docs/research/research-architecture.md).
 and the reader. B-03 added `POST /topics/{topic}/records`: `200` with the offset the broker gave, and `404` and
 `413` before the producer. B-05 added the deadline: `429` when the record was provably never queued, and `504`
 when the deadline wins after queueing. Every answer was checked by reading the topic, on both builds. B-07 refuses a drain shorter than the deadline. B-08 measured the shutdown with the broker gone: kore cuts `close` at 3 s and the process exits in 8 s. B-09 ran 40 rounds of `SIGTERM` under load: zero disagreements between the clients' ledgers and the topic. B-12 made
-the JVM build answer `503` through the announce, as native does (Ktor's JVM hook, youndie/kore#90). B-10 made
+the JVM build keep its listener through the announce, as native does (Ktor's JVM hook, youndie/kore#90). B-14 took kore
+`0.1.7`: the service now serves through the announce and refuses from the drain. B-10 made
 a busy port a one-line refusal. B-11 found the reset connections at shutdown to be the listening socket's accept queue closing with it, in a window already
 answering `503`. What is open: the question in B-06.
 
@@ -58,10 +59,10 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-14](docs/backlog/B-14-take-kore-0-1-7-and-remeasure-the-shutdown.md) `[~]` | Take kore 0.1.7: the refusal opens at the drain, and the shutdown is measured again | P1 | M | B-13 |
+| [B-15](docs/backlog/B-15-an-empty-reply-for-a-written-record.md) `[ ]` | A native publish whose record was written got an empty reply | P1 | M | - |
 | [B-06](docs/backlog/B-06-does-a-thrown-send-mean-not-written.md) `[?]` | Does a thrown send mean the record was not written? | P2 | S | B-04 |
 
-## Closed (12)
+## Closed (13)
 
 **From keel to a bridge that builds**
 
@@ -89,5 +90,6 @@ hypothesis was confirmed or refuted.
 **Take kore's fixes back**
 
 - [B-13](docs/backlog/B-13-take-kore-0-1-6-and-drop-the-workarounds.md) `[x]` - Take kore 0.1.6 and replace both local workarounds with kore's fixes
+- [B-14](docs/backlog/B-14-take-kore-0-1-7-and-remeasure-the-shutdown.md) `[x]` - Take kore 0.1.7: the refusal opens at the drain, and the shutdown is measured again
 
 <!-- END INDEX -->

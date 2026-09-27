@@ -27,18 +27,22 @@ is new here is that the drain has to outlast the publish deadline.
 
 ## 2. Business rules
 
-* A request that arrives after the signal gets `503` and is never sent, or its connection is refused. Measured
-  under load in B-09: no `503` record in any topic in 40 rounds. Both builds answer kore's `503` through the whole
-  announce and refuse connections only after it (`ci/b-12/run.sh`). The JVM build does so since B-12 switched off
-  Ktor's own JVM shutdown hook; before that, it refused from 1 ms after the signal.
+* **Through the 5 s announce the service goes on serving, and readiness says `503`.** A proxy that follows readiness
+  stops sending, and whatever it already sent is answered. From the drain on, a publish gets `503` and is never
+  sent, or its connection is refused. Measured on both builds with `ci/b-12/run.sh` (kore `0.1.7`, B-14): 20 probes
+  through the announce with readiness `503` and a publish `200`, and the connection refused from 5.0 s. Under
+  load (`ci/b-09/run.sh`, 40 rounds) no `503` record reached any topic.
+  - Under kore `0.1.6` and older the refusal read readiness, so every publish during the announce was `503`. That
+    is what B-09, B-11 and B-12 measured.
 * A request in flight when the signal lands gets a real answer (`200`, `429` or `504`), and every answer is
   true: in B-09 no `200` was missing, and no `429` or `503` was present.
-* **A reset connection is possible at one moment, and it costs nothing but its form.** A connection that arrives
-  in the last few tens of milliseconds of the announce, just as the drain closes the listening socket, is reset by
-  the kernel instead of answered. Measured in B-11: every reset started 4 to 43 ms before the listener closed and
-  ended within 9 ms of it, in the window where the service was answering `503` anyway. None carried a record. A
-  proxy that follows `/health/ready`, which is `503` for the whole announce, has stopped sending by then. A client
-  that ignores readiness can meet one.
+* **A reset connection is possible as the drain closes the listening socket.** A connection that arrives just as
+  the drain closes the listener is reset by the kernel instead of answered. Measured in B-11 under kore `0.1.6`:
+  every reset within 43 ms of the close. Measured again in B-14 under `0.1.7`: 58 of 59 within 122 ms of the close,
+  none with a record. A proxy that follows `/health/ready`, which is `503` for the whole announce, has stopped
+  sending by then. A client that ignores readiness can meet one.
+  - The 59th reset is not this mechanism. It happened in normal serving, and its record **was** written
+    (B-15, open).
 * `MOSTIK_DRAIN_MS ≥ MOSTIK_PUBLISH_DEADLINE_MS + 1 000 ms`, or the service refuses to start and names both
   values (research D6, B-07).
 * The process ends within the grace period even when `close` cannot finish. kore cuts the release stage at
@@ -49,8 +53,10 @@ is new here is that the drain has to outlast the publish deadline.
 
 ## 3. Flow
 
-1. `SIGTERM`. kore flips readiness (`/health/ready` → `503`) and waits `preDrainWait` (5 s by default).
-2. The refusal starts: every path but the probes answers kore's `503`.
+1. `SIGTERM`. kore flips readiness (`/health/ready` → `503`) and waits `preDrainWait` (5 s by default). The service
+   goes on serving meanwhile.
+2. The drain opens kore's `DrainGate` as its first act, and from then every path but the probes answers kore's
+   `503` (kore `0.1.7`, B-14).
 3. The engine drains for up to `MOSTIK_DRAIN_MS` (15 s by default, kore's own). **Not a ceiling:** while any
    connection is open, CIO spends it in full: 15.0 s at the default and 6.0 s at 6 000 ms, measured with one
    idle connection (B-07). Each request in it is bounded by the deadline
