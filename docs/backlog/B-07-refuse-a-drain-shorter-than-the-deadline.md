@@ -1,7 +1,7 @@
 ---
 id: B-07
 title: "Refuse to start when the drain budget is shorter than the publish deadline"
-status: open
+status: wip
 priority: P1
 size: S
 stage: stage-4-shutdown

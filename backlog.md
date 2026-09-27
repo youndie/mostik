@@ -55,7 +55,7 @@ hypothesis was confirmed or refuted.
 
 | Task | | Priority | Size | Blocked by |
 |---|---|---|---|---|
-| [B-07](docs/backlog/B-07-refuse-a-drain-shorter-than-the-deadline.md) `[ ]` | Refuse to start when the drain budget is shorter than the publish deadline | P1 | S | B-05 |
+| [B-07](docs/backlog/B-07-refuse-a-drain-shorter-than-the-deadline.md) `[~]` | Refuse to start when the drain budget is shorter than the publish deadline | P1 | S | B-05 |
 | [B-08](docs/backlog/B-08-close-with-the-broker-gone.md) `[ ]` | How long close takes with the broker gone, measured against the grace period | P1 | S | B-05 |
 | [B-09](docs/backlog/B-09-the-sigterm-oracle.md) `[ ]` | The SIGTERM oracle: every answer a client got agrees with the topic | P1 | M | B-07, B-08 |
 | [B-06](docs/backlog/B-06-does-a-thrown-send-mean-not-written.md) `[?]` | Does a thrown send mean the record was not written? | P2 | S | B-04 |
