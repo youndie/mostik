@@ -15,6 +15,7 @@ import io.github.youndie.kore.ktor.installKoreVersion
 import io.github.youndie.kore.ktor.installShutdownRefusal
 import io.github.youndie.kore.ktor.startForKore
 import io.github.youndie.kore.lifecycle.AnnounceNotReady
+import io.github.youndie.kore.lifecycle.DrainGate
 import io.github.youndie.kore.lifecycle.ShutdownDeadlines
 import io.github.youndie.kore.lifecycle.ShutdownParticipant
 import io.github.youndie.kore.lifecycle.runUntilSignal
@@ -39,6 +40,10 @@ import kotlin.time.Duration.Companion.seconds
 fun startMostik(settings: MostikSettings) {
     val startup = StartupGate()
     val readiness = ReadinessGate()
+    // The latch the refusal reads and the drain opens: one instance, handed to both (kore 0.1.7, B-14). Through the
+    // announce the service goes on serving while readiness says 503, so a proxy stops sending and what it already
+    // sent gets its answer. The refusal used to read readiness and answered 503 from the first millisecond.
+    val draining = DrainGate()
     val liveness = LivenessGate()
     // The drain is the deployment's (MOSTIK_DRAIN_MS), and the start-up has already refused one shorter than the
     // publish deadline plus its margin (B-07). The other deadlines stay kore's.
@@ -65,7 +70,7 @@ fun startMostik(settings: MostikSettings) {
                 shutdownTimeout = deadlines.drain.inWholeMilliseconds + 5_000
                 reuseAddress = REUSE_ADDRESS
             },
-            module = { mostikModule(startup, readiness, liveness, settings) { producer.enqueue(it) } },
+            module = { mostikModule(startup, readiness, liveness, draining, settings) { producer.enqueue(it) } },
         )
 
     // NOT `start(wait = true)`. The main thread has to be free to wait for the signal and then run
@@ -89,7 +94,7 @@ fun startMostik(settings: MostikSettings) {
             onFinished = { run -> println(run.transcript) },
         ) {
             announce(AnnounceNotReady(readiness))
-            drain(EngineDrain(server, deadlines.drain, deadlines.drain + 5.seconds))
+            drain(EngineDrain(server, deadlines.drain, deadlines.drain + 5.seconds, draining))
 
             // AFTER THE DRAIN, AND NEVER IN `ApplicationStopping` — which runs before the drain on
             // Kotlin/Native and after it on the JVM, from identical source. Closing the producer there
@@ -130,12 +135,13 @@ fun Application.mostikModule(
     startup: StartupGate,
     readiness: ReadinessGate,
     liveness: LivenessGate,
+    draining: DrainGate,
     settings: MostikSettings,
     enqueue: suspend (ProducerRecord) -> Delivery,
 ) {
     // BEFORE the probes and the routes. An interceptor installed later would let calls through that
-    // arrived first, and the one thing this must never miss is the first request after the announce.
-    installShutdownRefusal(isShuttingDown = { readiness.isShuttingDown })
+    // arrived first, and the one thing this must never miss is the first request after the drain opens.
+    installShutdownRefusal(draining)
     installKoreProbes(startup, readiness, liveness)
     installKoreVersion(KoreBuildIdentity)
 

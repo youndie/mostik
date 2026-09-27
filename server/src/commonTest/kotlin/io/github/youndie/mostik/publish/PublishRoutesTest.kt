@@ -7,6 +7,7 @@ import io.github.youndie.kafkakn.RecordNotQueuedException
 import io.github.youndie.kore.health.LivenessGate
 import io.github.youndie.kore.health.ReadinessGate
 import io.github.youndie.kore.health.StartupGate
+import io.github.youndie.kore.lifecycle.DrainGate
 import io.github.youndie.mostik.MostikSettings
 import io.github.youndie.mostik.mostikModule
 import io.ktor.client.request.header
@@ -57,7 +58,7 @@ class PublishRoutesTest {
         )
 
     private fun ApplicationTestBuilder.mostik(enqueue: suspend (ProducerRecord) -> Delivery = { acknowledged(it) }) =
-        application { mostikModule(StartupGate(), ReadinessGate(), LivenessGate(), settings, enqueue) }
+        application { mostikModule(StartupGate(), ReadinessGate(), LivenessGate(), DrainGate(), settings, enqueue) }
 
     /** The route alone, with a deadline and a clock of the test's choosing, and the same JSON `mostikModule` installs. */
     private fun ApplicationTestBuilder.route(

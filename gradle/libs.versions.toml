@@ -29,7 +29,7 @@ serialization = "1.11.0"
 # The process lifecycle: the ordered shutdown, the three probes, the typed configuration, /version.
 # On the portfolio's repository and NOT on Maven Central, which is what the README's reposilite block
 # is for and what the "stranger test" waits on.
-kore = "0.1.6"
+kore = "0.1.7"
 
 # The size gate `sborka.binaryBudget` is enforced by. Applied by `:server` rather than carried by the
 # convention — sborka's own comment says why.
