@@ -1,7 +1,7 @@
 ---
 id: B-12
 title: "The JVM build stops listening at SIGTERM, before kore's announce"
-status: open
+status: wip
 priority: P1
 size: S
 stage: stage-4-shutdown
