@@ -83,9 +83,11 @@ fun startMostik(settings: MostikSettings) {
     runBlocking {
         // ONE CALL for the stretch kore owns: wait for the signal, run the sequence, let the process
         // go. What stays here is the registrations, which no API can supply. The call belongs AFTER
-        // the server is serving: its default `watch` argument installs the signal handler at the
-        // moment of the call, and a handler installed earlier catches a signal whose sequence has
-        // nothing to drain. Nothing at this call site shows that.
+        // `startForKore`, and it MUST come: on native, since kore 0.1.9, `startForKore` holds the
+        // signal from before `start` with a handler that only records it, so that a signal in the
+        // first moments no longer meets Ktor's own handler and hangs (kore B-63, mostik B-16). This
+        // call is what runs the sequence for a signal recorded that early. Nothing at this call site
+        // shows that.
         runUntilSignal(
             deadlines,
             // INSIDE, not after. On the JVM this call returning means the shutdown hook has returned
@@ -176,6 +178,8 @@ internal fun retryAfterSeconds(queueWaitMs: Int): Int = maxOf(1, (queueWaitMs + 
  * *listening* on is still refused: `ci/b-10/run.sh`.
  *
  * One constant, because the check and the engine must bind the same way. A check stricter than the engine refuses
- * a start that would have worked; a looser one lets through a start that aborts.
+ * a start that would have worked; a looser one lets through a start that aborts. kore's `requireListenable` has
+ * defaulted to `true` since 0.1.8 (kore B-62), and the constant is still passed to it, so that the two cannot drift
+ * apart when either default moves.
  */
 internal const val REUSE_ADDRESS: Boolean = true

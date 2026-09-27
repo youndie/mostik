@@ -11,7 +11,7 @@ Kotlin/Native binary and a JVM distribution, one image) and publishing through
 offset the broker gave (B-03), `429` for a record provably never queued, and `504 outcome-unknown` for
 everything after queueing (B-05, B-06). All of it is checked by reading the topic, on both builds.
 
-- kafkakn is pinned at `0.1.0.11` (B-04) and kore at `0.1.7` (B-13, B-14).
+- kafkakn is pinned at `0.1.0.11` (B-04) and kore at `0.1.10` (B-13, B-14, B-16).
 - The drain budget is checked at start-up (B-07). A busy port is a one-line refusal (B-10).
 - Through the announce both builds go on serving while readiness says `503`; the refusal opens at the drain
   (B-12, B-14).
@@ -119,9 +119,10 @@ repositories open. The full list with addresses is keel's, at
   invisible (B-12, kore#90).
 - **The engine and the port check bind with the same `REUSE_ADDRESS`.** Native CIO applies `reuseAddress = false`
   literally, so without it a native restart over its own TIME_WAIT is refused (B-13).
-- **`runUntilSignal` goes after `server.startForKore()`**, because its default `watch` argument
-  installs the handler at the moment of the call. Print the transcript **inside** `onFinished`: on
-  the JVM the line after the call never runs.
+- **`runUntilSignal` goes after `server.startForKore()`, and it has to come.** On native, since kore
+  `0.1.9`, `startForKore` takes the signal before `start` with a handler that only records it, and
+  `runUntilSignal` is what runs the sequence for it (kore B-63, B-16). Print the transcript **inside**
+  `onFinished`: on the JVM the line after the call never runs.
 - **`nativeService { }` goes above the `kotlin { }` block**, or the build fails with "property
   entryPoint has no value available" and names neither the ordering nor the place.
 - **Two sibling modules applying different Kotlin plugins need the root build to declare both with
