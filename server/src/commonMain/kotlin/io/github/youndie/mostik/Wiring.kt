@@ -29,6 +29,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.runBlocking
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -104,13 +105,14 @@ fun startMostik(settings: MostikSettings) {
             // platforms, and the code looks the same on both.
             //
             // `close` flushes: a record whose request was already answered `504` is still handed to the
-            // broker here, which is what "unknown" means. How long that takes with the broker gone is B-08.
+            // broker here, which is what "unknown" means. BOUNDED INSIDE kore's release stage, so that it
+            // ends by itself rather than being cancelled there (B-08, B-17); see PRODUCER_CLOSE_MARGIN.
             pool(
                 object : ShutdownParticipant {
                     override val name = "kafka-producer"
 
                     override suspend fun stop() {
-                        producer.close()
+                        producer.close(deadlines.releaseGroup - PRODUCER_CLOSE_MARGIN)
                     }
                 },
             )
@@ -167,6 +169,18 @@ fun Application.mostikModule(
  * measures the drain, and a number derived from nothing would look like a measurement (research, open question 2).
  */
 internal fun retryAfterSeconds(queueWaitMs: Int): Int = maxOf(1, (queueWaitMs + 999) / 1_000)
+
+/**
+ * How much of kore's release stage the producer's `close(timeout)` leaves unused.
+ *
+ * `close()` alone waits for each client's own delivery timeout with the broker gone, 2 minutes on the JVM and 5 on
+ * native (kafkakn B-83), so kore cancelled it at `releaseGroup` and logged `RELEASE_POOLS DEADLINE_EXCEEDED` (B-08).
+ * `close(timeout)` ends on its own, and every record it gives up on fails its `await()` with
+ * `ClosedBeforeAcknowledgedException` (kafkakn B-91). No answer changes: each of those requests was answered `504`
+ * already, and a record that was in flight may still be written, which is what `504` says. kafkakn measured
+ * `close(3 s)` returning in 3 002 to 3 010 ms on both arms, so half a second is room to spare, not a tight fit.
+ */
+internal val PRODUCER_CLOSE_MARGIN: Duration = 500.milliseconds
 
 /**
  * `SO_REUSEADDR` on the listening socket, for the engine and for the start-up's port check alike.

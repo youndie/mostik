@@ -134,7 +134,8 @@ Sample data: the topic `orders` (3 partitions), key `order-1042`, value
 * A `504` record can be written after the client was told "unknown", when the broker answers later. At
   shutdown `close` gets 3 s (kore's `releaseGroup`), and a record still unacknowledged then is dropped with the
   process (B-08). Either way the client was told the truth: nobody knew.
-* **With the broker stopped, not paused, the two builds answer differently.** The topic's metadata was known
-  from an earlier publish: the JVM build answered `429` (not queued) five times out of five, and the native
-  build `504` (queued) five times out of five (B-08). Both answers are true. They are not the same, and B-05's
-  "same status on both builds" was checked for a paused broker and a full queue only.
+* **At the moment a broker stops, a publish can be `429` or `504`, on either build.** Neither client has noticed
+  the outage yet, and kafkakn does not promise which (its contract, B-80). Measured just after `docker stop`, with
+  the topic's metadata known: native `429` in 3 of 3 rounds, the JVM `504` in 2 and `429` in 1 (B-17; under
+  kafkakn `0.1.0.11` native had queued, `504`, B-08). Every answer was true: none of the records was written.
+  Once the outage is noticed, both builds refuse at `enqueue` and answer `429`.

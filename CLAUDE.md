@@ -11,7 +11,7 @@ Kotlin/Native binary and a JVM distribution, one image) and publishing through
 offset the broker gave (B-03), `429` for a record provably never queued, and `504 outcome-unknown` for
 everything after queueing (B-05, B-06). All of it is checked by reading the topic, on both builds.
 
-- kafkakn is pinned at `0.1.0.11` (B-04) and kore at `0.1.10` (B-13, B-14, B-16).
+- kafkakn is pinned at `0.1.0.13` (B-04, B-17) and kore at `0.1.10` (B-13, B-14, B-16).
 - The drain budget is checked at start-up (B-07). A busy port is a one-line refusal (B-10).
 - Through the announce both builds go on serving while readiness says `503`; the refusal opens at the drain
   (B-12, B-14).

@@ -45,6 +45,11 @@ is new here is that the drain has to outlast the publish deadline.
     (B-15: Ktor's CIO on native, accepted).
 * `MOSTIK_DRAIN_MS ≥ MOSTIK_PUBLISH_DEADLINE_MS + 1 000 ms`, or the service refuses to start and names both
   values (research D6, B-07).
+* **The producer's `close` ends inside kore's release stage by itself.** It is `close(timeout)`, with the timeout
+  half a second short of `releaseGroup` (B-17). With the broker paused and five records in flight, the release
+  ended in 2.50 to 2.51 s with `RELEASE_POOLS COMPLETED`, on both builds, three rounds each. Before, `close()` was
+  cancelled by kore at 3 s (`DEADLINE_EXCEEDED`). Records it gives up on may still be written, and each had
+  already been answered `504`.
 * The process ends within the grace period even when `close` cannot finish. kore cuts the release stage at
   3 s. With the broker stopped and records queued, measured three times per build: 8.06 to 8.09 s on native
   (`RELEASE_POOLS DEADLINE_EXCEEDED`, exit 0) and 5.05 to 5.12 s on the JVM (nothing was queued, exit 143),

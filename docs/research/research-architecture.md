@@ -337,6 +337,9 @@ participant still running, and exits without it
 With the broker stopped and five records queued, the native build exited 8.06 to 8.09 s after `SIGTERM` in three
 rounds, logging `RELEASE_POOLS DEADLINE_EXCEEDED`. None of the five records reached the topic, and each had been
 answered `504`. No `SIGKILL`, and no kafkakn item is needed.
+**Amended 2026-09-28 (B-17): the bound is now mostik's own.** kafkakn `0.1.0.13` has `close(timeout)` (kafkakn
+B-91), and the producer's release calls it with `releaseGroup − 500 ms`, so it ends inside kore's stage instead of
+being cancelled there.
 
 **Found by the same run: with the broker stopped, the arms disagree on whether a record is queued.** The topic's
 metadata was known from an earlier publish. The JVM build answered `429` five times out of five, and the native
@@ -344,7 +347,16 @@ build `504` five times out of five. Both are true answers under kafkakn's contra
 agree when the broker is unreachable. They are still two answers to one situation, the thing B-76 removed for
 missing metadata. Whether this one goes to kafkakn is the owner's call.
 
-**H3. A thrown `send` does not always mean "not written".** A local message timeout on a record that was
+**Amended 2026-09-28 (B-17): the split moved, and it is now the one kafkakn names.** kafkakn B-80 makes native
+forget the topics it described once every broker is down, so its next `enqueue` waits `max.block.ms` and refuses, as
+the JVM arm does. `ci/b-08/run.sh` on kafkakn `0.1.0.13`, three rounds per build, the five publishes sent just after
+`docker stop`: native `429` in 3 of 3 rounds; the JVM `504` in 2 and `429` in 1. kafkakn's contract now says so:
+*"At the instant of the stop the answer is not promised"*, because neither client has noticed yet. Every answer
+was still true: none of the records was in the topic afterwards.
+
+**H3. A thrown `send` does not always mean "not written".** *Since 2026-09-28 kafkakn's contract says it
+(kafkakn B-83): a failed `await()` means not written for a record never sent and possibly written for one in
+flight; with the broker paused, all five timed-out records were in the topic afterwards.* A local message timeout on a record that was
 in flight may have been persisted. librdkafka's `rd_kafka_message_status` (NOT / POSSIBLY / PERSISTED)
 is expected in the bundled 2.13.0 header, which has not been read. The Java client has nothing
 equivalent. Settled by B-06. Until then `502` is only for refusals the broker names (for example

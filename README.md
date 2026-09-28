@@ -132,8 +132,9 @@ A clean stop exits `0` on native and `143` on the JVM.
   targets into one image.
 
 Every scenario runs on both builds, so the JVM build is the oracle for the native one. Where the two disagree, it
-is written down. For example, with the broker stopped (not paused), the JVM build answers `429` and the native one
-answers `504` ([B-08](docs/backlog/B-08-close-with-the-broker-gone.md)).
+is written down. For example, at the moment a broker stops, either build can answer `429` or `504` for the next
+publish, because neither client has noticed yet; both answers are true
+([B-17](docs/backlog/B-17-take-kafkakn-0-1-0-13.md)).
 
 **kafkakn, kore, sborka and razves are not on Maven Central.** `settings.gradle.kts` already declares their
 repository, filtered to their group:

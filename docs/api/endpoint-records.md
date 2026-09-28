@@ -44,7 +44,7 @@ parent_feature: feature-publish-over-http
 | the broker acknowledged | `200` | `{"topic": …, "partition": …, "offset": …, "timestamp": …}`; the reader finds the same bytes, key and header at that place on both builds (`ci/b-03/run.sh`) |
 | the record was provably never queued | `429` + `Retry-After` | `{"error": "not-queued", "detail": …}`: `enqueue` threw `RecordNotQueuedException` within `MOSTIK_QUEUE_WAIT_MS`. `Retry-After` is the queue wait in whole seconds, at least 1. On both builds, the record is absent from the topic afterwards (`ci/b-05/run.sh`) |
 | the producer refused the record before queueing it, for any other reason (for example it is closed) | `502` | `{"error": "producer-refused", "detail": …}`: not written, and waiting will not help, so not `429` |
-| the deadline passed after the record was queued, or the delivery failed after queueing, for any reason, a refusal the broker named included (B-06) | `504` | `{"error": "outcome-unknown", "detail": …, "outcome": "unknown", "retrySafe": false}`. With the broker paused, the record is found in the topic after it resumes, on both builds (`ci/b-05/run.sh`) |
+| the deadline passed after the record was queued, or the delivery failed after queueing, for any reason, a refusal the broker named included (B-06) | `504` | `{"error": "outcome-unknown", "detail": …, "outcome": "unknown", "retrySafe": false}`. With the broker paused, the record is found in the topic after it resumes, on both builds (`ci/b-05/run.sh`). kafkakn's contract says the same: a failed `await()` is possibly written for a record that was in flight (kafkakn B-83) |
 
 ## Errors
 
