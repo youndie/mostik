@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # B-08: how long a SIGTERM takes when the broker is gone and the producer holds records nobody will acknowledge.
 #
-#   ci/b-08/run.sh native|jvm [rounds]
+#   ci/b-08/run.sh native|jvm [rounds] [stop|pause]
+#
+# `pause` (B-17) makes the broker silent instead, with connections open: the five records are then in flight when the
+# signal lands, which is the case `close(timeout)` exists for.
 #
 # One round: the broker up, one publish to learn the topic's metadata, the broker STOPPED (refusing connections,
 # which is not B-05's pause), five publishes that queue and then time out as 504, then SIGTERM while those records
@@ -14,6 +17,8 @@ BROKER="$ROOT/ci/broker/broker.sh"
 PORT=18100
 URL="http://127.0.0.1:$PORT"
 ROUNDS=${2:-3}
+MODE=${3:-stop}
+case "$MODE" in stop | pause) ;; *) echo "the third argument is stop or pause" >&2; exit 2 ;; esac
 case "${1:-}" in
   native) LAUNCH=("$ROOT/server/build/bin/linuxX64/releaseExecutable/mostik.kexe") ;;
   jvm) LAUNCH=("$ROOT/distribution/build/install/distribution/bin/distribution") ;;
@@ -31,7 +36,7 @@ for round in $(seq 1 "$ROUNDS"); do
     run=$(date +%s%N)
     warm=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/topics/orders/records" -H "Record-Key: warm-$run" --data-binary w)
 
-    docker stop -t 1 mostik-broker > /dev/null
+    if [ "$MODE" = stop ]; then docker stop -t 1 mostik-broker > /dev/null; else "$BROKER" pause > /dev/null; fi
     for i in 1 2 3 4 5; do
         curl -s -o /dev/null -w '%{http_code}\n' -X POST "$URL/topics/orders/records" -H "Record-Key: gone-$run-$i" \
             --data-binary g > "/tmp/mostik-b08-$1-$round-$i" &
@@ -50,10 +55,10 @@ for round in $(seq 1 "$ROUNDS"); do
     fi
     release=$(grep -E "^RELEASE_POOLS|^EXIT" "$log" | tr '\n' ';')
 
-    "$BROKER" up > /dev/null
+    if [ "$MODE" = pause ]; then "$BROKER" resume > /dev/null; else "$BROKER" up > /dev/null; fi
     landed=0
     for i in 1 2 3 4 5; do
         [ -n "$(READ_TIMEOUT_MS=3000 "$BROKER" key orders "gone-$run-$i")" ] && landed=$((landed + 1))
     done
-    echo "[$1 round $round] warm=$warm publishes: $statuses| SIGTERM to exit: ${took} ms, exit $code | $release | of 5 records, $landed in the topic"
+    echo "[$1 $MODE round $round] warm=$warm publishes: $statuses| SIGTERM to exit: ${took} ms, exit $code | $release | of 5 records, $landed in the topic"
 done
