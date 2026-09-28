@@ -1,7 +1,7 @@
 ---
 id: B-17
 title: "Take kafkakn 0.1.0.13: close the producer within kore's release, and remeasure the stopped broker"
-status: wip
+status: done
 priority: P2
 size: S
 stage: stage-4-shutdown
@@ -39,3 +39,41 @@ mostik pins kafkakn `0.1.0.11`. Three things since then change what mostik can s
 - AC: `ci/b-09/run.sh`, 5 rounds per build: zero disagreements.
 - Anchors: `gradle/libs.versions.toml`, `server/src/commonMain/kotlin/io/github/youndie/mostik/Wiring.kt`,
   `ci/b-08/run.sh`.
+
+## Findings (2026-09-28)
+
+Everything ran on the Linux box. The first commit of this branch pins kafkakn alone and keeps `close()`: that build
+is the control. The second calls `close(releaseGroup − 500 ms)`. `distribution/.../lib` holds
+`kafkakn-core-jvm-0.1.0.13.jar`.
+
+- **AC: the pin, both suites.** `make build` green on both commits: `jvmTest` and `linuxX64Test` 28 tests each, no
+  failures, the result files from each run.
+- **AC: `ci/b-08/run.sh native|jvm 3 pause`, the broker paused, five records in flight at `SIGTERM`:**
+
+  | | `close()` (control) | `close(2.5 s)` |
+  |---|---|---|
+  | native release | `DEADLINE_EXCEEDED` at 3.000 s, 3 of 3 | `COMPLETED` in 2.501 to 2.511 s, 3 of 3 |
+  | native `SIGTERM` to exit | 8 041 to 8 723 ms | 7 534 to 7 609 ms |
+  | JVM release | `DEADLINE_EXCEEDED` at 3.003 s, 3 of 3 | `COMPLETED` in 2.508 s, 3 of 3 |
+  | JVM `SIGTERM` to exit | 8 342 to 9 005 ms | 7 532 to 8 323 ms |
+  | records in the topic afterwards | 5 of 5, every round | 5 of 5, except one JVM round with 2 |
+
+  Every one of those records had been answered `504` before the signal, so every answer was true either way. The
+  JVM round with 2 of 5 is kafkakn's amendment in action: the force close failed batches that were in flight, and
+  some of them had reached the broker.
+- **AC: `ci/b-08/run.sh native|jvm 3`, the broker stopped just before the five publishes:**
+  - control: native `429` 3 of 3; the JVM `504` 2 of 3, `429` 1 of 3;
+  - with `close(timeout)`: native `429` 3 of 3; the JVM `429` 2 of 3, `504` 1 of 3. A JVM round with `504` now ends
+    its release in 2.51 s with `COMPLETED`, where the control's were cut at 3 s.
+
+  None of the records was in the topic afterwards. Under kafkakn `0.1.0.11`, native answered `504` 5 of 5 (B-08).
+  So native now refuses (kafkakn B-80), and the JVM answers either way at the instant of the stop, which kafkakn's
+  contract now says it does not promise. The feature's quirk, the research and the README say this instead of
+  "the builds disagree".
+  - The native `stop` rounds of the `close(timeout)` build printed nothing in the first combined run: the script's
+    output went through `grep round`, which would also have hidden a broker that did not come up. Run again on its
+    own, the same build gave the three rounds above.
+- **AC: `ci/b-09/run.sh`, 5 rounds per build, with `close(timeout)`: 0 of 5 rounds with a disagreement on either
+  build.** 10 367 to 18 341 `200`s a round, 0 to 8 resets a round.
+- **The documents.** The `504` row of the endpoint and research H3 now cite kafkakn's contract: a failed `await()`
+  is possibly written for a record in flight. No status changed: that was already `504` (B-06).
