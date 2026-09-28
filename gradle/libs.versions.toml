@@ -41,7 +41,7 @@ razves = "0.1.0.31"
 # number cannot move under a build the way a day-cached `0.1.0-SNAPSHOT` can (research §1.8). 0.1.0.11 is
 # the first carrying kafkakn B-76: native `enqueue` refuses a record whose topic has no metadata within
 # `max.block.ms`, as the JVM arm does (B-04, `EnqueueContractTest`).
-kafkakn = "0.1.0.11"
+kafkakn = "0.1.0.13"
 
 # The Leyden AOT cache for the JVM distribution. JDK 25 or newer is a hard requirement — the one-step
 # training workflow is JEP 514 — which agrees with the toolchain kore already forces.
