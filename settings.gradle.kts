@@ -29,7 +29,7 @@ plugins {
     // Repositories with content filters, the shared `wip` catalog and the `.editorconfig` check.
     // Every convention this repository uses comes from here: a flag in this repository's own build files is a
     // flag sborka forgot, and it is filed there rather than added here.
-    id("io.github.youndie.sborka.settings") version "0.4.0.89"
+    id("io.github.youndie.sborka.settings") version "0.4.0.111"
 }
 
 // The whole service: one route, the kore wiring, two entry points.

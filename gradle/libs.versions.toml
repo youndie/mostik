@@ -6,7 +6,7 @@
 [versions]
 
 # The shared build conventions. One number: every sborka plugin below takes its version from here.
-sborka = "0.4.0.89"
+sborka = "0.4.0.111"
 
 # NOT HERE ANY MORE. The compiler comes from `wip`, the catalog a sborka release publishes.
 #
