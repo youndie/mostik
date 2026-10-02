@@ -181,7 +181,7 @@ English.
 ```bash
 pip install pyyaml
 LOCAL=1 make check      # the gate; CI runs exactly it
-LOCAL=1 make report     # the two non-blocking reports
+LOCAL=1 make report     # the two reports; code anchors blocks (ANCHORS_ARGS)
 LOCAL=1 make fix        # regenerate the backlog index, fill in missing coverage-map lines
 ```
 
@@ -191,7 +191,9 @@ The checks are docs-bootstrap's, at the version the `uses: youndie/docs-bootstra
 `scripts/` to run by hand.
 
 `code_anchors` reports the addresses inside kafkakn, keel and kore in their own section and never
-counts them as rot.
+counts them as rot. It blocks (`ANCHORS_ARGS ?= --check` in the Makefile): a path in `docs/` that
+resolves to nothing fails `make check`, so a path outside this repository is written as such an
+address (docs-bootstrap SPEC §4.1), never bare.
 
 ## Commits
 

@@ -61,7 +61,8 @@ pip install pyyaml
 LOCAL=1 make check
 ```
 
-`make check` is the gate and CI runs exactly it. `make report` runs the two non-blocking reports;
+`make check` is the gate and CI runs exactly it. `make report` runs the two reports — BDD
+coverage, which does not block, and code anchors, which does (`ANCHORS_ARGS` in the Makefile);
 `make fix` regenerates the backlog index. The checks are
 [docs-bootstrap](https://github.com/youndie/docs-bootstrap)'s, at the version
 `.github/workflows/check.yaml` pins, fetched into `.docs-bootstrap/` by the first run.
