@@ -7,7 +7,7 @@
 # runtime image is a decision about certificates, shared libraries and a base image's glibc, and
 # those belong in a file a person reads and a pull request reviews.
 
-FROM --platform=linux/amd64 gradle:9.7.1-jdk25-noble AS build
+FROM --platform=linux/amd64 gradle:9.8.0-jdk25-noble AS build
 WORKDIR /app
 COPY . .
 # The Kotlin/Native toolchain is ~1 GB and is downloaded on a cold build. Cached across image builds
