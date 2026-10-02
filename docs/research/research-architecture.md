@@ -308,7 +308,8 @@ counter of "calls that entered `send`", which cannot tell the two moments apart 
 ### D8. The backlog is one file per item
 
 About ten items would fit the checklist form, but the `backlog-item` loop reads only the file-per-item
-form, and this tree already carries its generator (`scripts/backlog_index.py`).
+form, and the docs checks this tree runs already carry its generator (`backlog_index.py`, behind
+`make fix`).
 
 ### D9. Documents in English
 

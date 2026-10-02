@@ -39,7 +39,7 @@ visible; `backlog.md` and the build are what cannot go stale.
      reset connection instead of an answer.
 2. [backlog.md](backlog.md) — the goal, the stages, the index. Items are one file each in
    `docs/backlog/`; the index between the markers is generated, so edit the item and run
-   `python3 scripts/backlog_index.py`.
+   `LOCAL=1 make fix`.
 3. The layer document the task belongs to: [docs/services/mostik-server.md](docs/services/mostik-server.md)
    for how it is built and its quirks, [docs/api/endpoint-records.md](docs/api/endpoint-records.md) for the
    route, [docs/features/feature-publish-over-http.md](docs/features/feature-publish-over-http.md) for the
@@ -97,8 +97,8 @@ Not covered by this: a pull request a person opened. The loop merges what the lo
 
 - **`main` describes what exists.** A layer document is `draft` on its branch and goes `active` only
   after it is **re-read against the code**, not flipped. In keel that re-reading found an instruction
-  that ran and silently produced the wrong artefact. `docs_check.py --on-main` is the mechanical half,
-  and it is on in CI's push job.
+  that ran and silently produced the wrong artefact. `make docs-on-main` is the mechanical half, and
+  CI runs it on every push to `main`.
 - **What was verified is separated from what was assumed, explicitly.** Everything in research §1
   carries a file, a coordinate or a URL with the date it was read. Everything else says "decision" or
   "hypothesis", and a hypothesis names the item that settles it. A document that blurs the two is a
@@ -182,7 +182,12 @@ English.
 pip install pyyaml
 LOCAL=1 make check      # the gate; CI runs exactly it
 LOCAL=1 make report     # the two non-blocking reports
+LOCAL=1 make fix        # regenerate the backlog index, fill in missing coverage-map lines
 ```
+
+The checks are docs-bootstrap's, at the version the `uses: youndie/docs-bootstrap@…` line in
+`.github/workflows/check.yaml` pins; the first `make` fetches that version into `.docs-bootstrap/` (it
+ignores itself). There are no copies under `scripts/` to run by hand.
 
 `code_anchors` reports the addresses inside kafkakn, keel and kore in their own section and never
 counts them as rot.

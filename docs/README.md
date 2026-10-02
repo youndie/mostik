@@ -32,8 +32,8 @@ file each in [`backlog/`](backlog/), cited as [B-01](backlog/B-01-from-template-
 **Every document here is `active`, and each was re-read against the code in B-03, not flipped.**
 `active` does not mean everything described is built. It means nothing described is wrong: what is not
 built yet is marked *target* where a reader meets it, with the item that builds it. The shutdown checks
-(B-07, B-08, B-09) are the largest of those. `docs_check.py --on-main` refuses a `draft`
-on the default branch.
+(B-07, B-08, B-09) are the largest of those. `make docs-on-main`, which CI runs on every push to
+`main`, refuses a `draft` on the default branch.
 
 **What is verified** is [research-architecture](research/research-architecture.md) §1: each fact
 carries an address inside kafkakn, keel, kore or a registry listing, with the date it was read. The
@@ -61,7 +61,10 @@ pip install pyyaml
 LOCAL=1 make check
 ```
 
-`make check` is the gate and CI runs exactly it. `make report` runs the two non-blocking reports.
+`make check` is the gate and CI runs exactly it. `make report` runs the two non-blocking reports;
+`make fix` regenerates the backlog index. The checks are
+[docs-bootstrap](https://github.com/youndie/docs-bootstrap)'s, at the version
+`.github/workflows/check.yaml` pins, fetched into `.docs-bootstrap/` by the first run.
 
 ## Coverage map
 
