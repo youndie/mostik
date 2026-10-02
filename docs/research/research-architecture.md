@@ -157,7 +157,7 @@ relates to the publish deadline (§1.6). What `close` does when the broker is go
 
 | Fact | Where verified |
 |---|---|
-| The sequence is `announce(AnnounceNotReady)` → `drain(EngineDrain(server, drain, drain + 5 s))` → `pool(ShutdownParticipant)`. The participant (today the SQLite pool) is closed after the drain and never in `ApplicationStopping` | `server/src/commonMain/kotlin/io/github/youndie/keel/Wiring.kt` |
+| The sequence is `announce(AnnounceNotReady)` → `drain(EngineDrain(server, drain, drain + 5 s))` → `pool(ShutdownParticipant)`. The participant (today the SQLite pool) is closed after the drain and never in `ApplicationStopping` | `youndie/keel@6be238d!/server/src/commonMain/kotlin/io/github/youndie/keel/Wiring.kt` |
 | New requests during shutdown are refused by `installShutdownRefusal(isShuttingDown = …)` | same file, `keelModule` |
 | **Amended 2026-09-27 (B-14):** since kore `0.1.7` the refusal reads a `DrainGate` that `EngineDrain` opens as its first act, so the announce serves and only readiness says `503`. The predicate form read readiness and refused through the announce (kore #95, B-61) | `youndie/kore@53fe567!/kore-ktor/src/commonMain/kotlin/io/github/youndie/kore/ktor/ShutdownRefusal.kt` |
 | `ShutdownDeadlines()` defaults: `preDrainWait` 5 s, `drain` 15 s, `releaseGroup` 3 s; grace period 30 s (the Kubernetes default) | `youndie/kore@47825a6!/kore-core/src/commonMain/kotlin/io/github/youndie/kore/lifecycle/ShutdownPlan.kt`; `git log -S` shows the defaults unchanged since they were introduced, so they are the values of the pinned 0.1.4 |
@@ -225,7 +225,7 @@ allowlist.
 | Fact | Where verified |
 |---|---|
 | A key is read as `<prefix>_<name>`, so the template's `PORT` is `KEEL_PORT` and mostik's is `MOSTIK_PORT` | `youndie/kore@47825a6!/kore-core/src/commonMain/kotlin/io/github/youndie/kore/config/ConfigSchema.kt` (`variableOf`) |
-| A variable under the prefix that the schema does not declare is refused at start-up, with the declared name it is probably a misspelling of | same file; `server/src/commonMain/kotlin/io/github/youndie/keel/KeelConfig.kt` (KDoc) |
+| A variable under the prefix that the schema does not declare is refused at start-up, with the declared name it is probably a misspelling of | same file; `youndie/keel@6be238d!/server/src/commonMain/kotlin/io/github/youndie/keel/KeelConfig.kt` (KDoc) |
 | kafkakn refuses a producer key neither arm honours at construction, and does not drop it silently | `youndie/kafkakn@2f209b0!/docs/api/producer-contract.md`, *Configuration* |
 
 **Consequence.** The brief's pass-through of arbitrary producer keys cannot live under `MOSTIK_`. Those

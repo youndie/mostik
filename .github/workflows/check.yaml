@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: youndie/docs-bootstrap@v0.3.0
+      - uses: youndie/docs-bootstrap@v0.3.5
 
   # THE CODE GATE. Until keel's B-06 there was none, and a pull request that did not compile was green —
   # which stopped being only a reviewer's problem when the loop began merging on green CI.
@@ -114,7 +114,7 @@ jobs:
 
       # The code lives in this checkout, so its parent is a directory whose one subdirectory is
       # this repository - which is exactly what REPOS (`..` by default) expects.
-      - uses: youndie/docs-bootstrap@v0.3.0
+      - uses: youndie/docs-bootstrap@v0.3.5
         with:
           target: report
 
@@ -136,6 +136,6 @@ jobs:
       #       done
       #     env:
       #       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   - uses: youndie/docs-bootstrap@v0.3.0
+      #   - uses: youndie/docs-bootstrap@v0.3.5
       #     with:
       #       target: report REPOS=repos

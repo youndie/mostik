@@ -186,8 +186,9 @@ LOCAL=1 make fix        # regenerate the backlog index, fill in missing coverage
 ```
 
 The checks are docs-bootstrap's, at the version the `uses: youndie/docs-bootstrap@…` line in
-`.github/workflows/check.yaml` pins; the first `make` fetches that version into `.docs-bootstrap/` (it
-ignores itself). There are no copies under `scripts/` to run by hand.
+`.github/workflows/check.yaml` pins; the first `make check`, `report` or `fix` fetches that version into
+`.docs-bootstrap/` (it ignores itself), and `make build` never reads it. There are no copies under
+`scripts/` to run by hand.
 
 `code_anchors` reports the addresses inside kafkakn, keel and kore in their own section and never
 counts them as rot.
