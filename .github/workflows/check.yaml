@@ -55,7 +55,12 @@ jobs:
       # version; the portfolio ran three different versions of `setup-gradle` at once before this
       # action existed. The cache matters here specifically: the Kotlin/Native toolchain is around a
       # gigabyte and is fetched on every cold runner.
-      - uses: youndie/sborka/.github/actions/setup-kotlin@main
+      #
+      # BY TAG RATHER THAN `@main`. Every sborka publish tags the commit it built, `v<X.Y.Z.N>`, and
+      # never moves the tag. At `@main` a merge to sborka changed this build with no pull request
+      # here. At a tag the next sborka release arrives as Renovate's pull request, and this build runs
+      # on it first. sborka's preset tells Renovate how to order a four-part tag (youndie/sborka#123).
+      - uses: youndie/sborka/.github/actions/setup-kotlin@v0.5.0.126
         with:
           konan-cache: "true"
 
