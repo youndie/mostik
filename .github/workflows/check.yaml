@@ -60,7 +60,7 @@ jobs:
       # never moves the tag. At `@main` a merge to sborka changed this build with no pull request
       # here. At a tag the next sborka release arrives as Renovate's pull request, and this build runs
       # on it first. sborka's preset tells Renovate how to order a four-part tag (youndie/sborka#123).
-      - uses: youndie/sborka/.github/actions/setup-kotlin@v0.5.0.126
+      - uses: youndie/sborka/.github/actions/setup-kotlin@v0.5.0.135
         with:
           konan-cache: "true"
 
